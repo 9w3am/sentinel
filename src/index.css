@@ -178,7 +178,7 @@ body::after {
   }
 
   .tape {
-    background: repeating-linear-gradient(90deg, #0f0f0d 0 22px, var(--seal) 22px 44px);
+    background: repeating-linear-gradient(-45deg, #0f0f0d 0 14px, var(--seal) 14px 28px);
     border-top: 2px solid #0f0f0d;
     border-bottom: 2px solid #0f0f0d;
   }

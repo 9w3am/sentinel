@@ -51,30 +51,49 @@ export default function Home() {
       {/* ── 경보판 + 게이트 기록 */}
       <section className="border-b border-rule">
         <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,780px)_1fr]">
-          <div className="alert-cut relative min-h-[470px] overflow-hidden text-ink sm:min-h-[540px] lg:min-h-[560px]" style={{ background: danger ? 'var(--destructive)' : 'var(--seal)' }}>
-            <div className="dots pointer-events-none absolute right-10 top-0 h-[360px] w-[360px] opacity-55" />
-            <div className="tape pointer-events-none absolute -right-[70px] top-[34px] h-[30px] w-[340px] rotate-[38deg]" />
-            <div className="absolute left-6 top-7 flex items-baseline gap-4 text-[14px] font-bold sm:left-11">
-              <span>오늘의 경보</span>
-              <span className="font-mono text-[13px] font-medium">발령 {hhmm(settings?.updated_at)} · 상황실</span>
-            </div>
-            <p className="absolute left-6 right-6 top-[84px] max-w-[450px] text-[20px] font-bold leading-[1.5] sm:left-11 sm:text-[22px]">
-              {lead}
-              {rest && <span className="mt-2.5 block text-[15px] font-medium leading-[1.7]">{rest}</span>}
-            </p>
-            <div className="absolute bottom-[132px] right-6 sm:bottom-14 sm:right-[120px]">
-              <span className="stamp stamp-in text-[24px] sm:text-[26px]">
-                {info.name.split('').join(' ')}
-                <small>경보 {level}단계</small>
+          <div className="alert-cut relative flex min-h-[460px] flex-col overflow-hidden text-ink lg:min-h-[560px]" style={{ background: danger ? 'var(--destructive)' : 'var(--seal)' }}>
+            <div className="dots pointer-events-none absolute right-0 top-0 h-[300px] w-[300px] opacity-50 sm:h-[380px] sm:w-[380px]" />
+
+            <div className="relative flex items-center gap-3 px-6 pt-7 sm:px-11">
+              <span className="bg-ink px-2 py-0.5 text-[13px] font-bold" style={{ color: danger ? 'var(--destructive)' : 'var(--seal)' }}>
+                경보 발령
               </span>
+              <span className="font-mono text-[13px] font-medium">{hhmm(settings?.updated_at)} · 상황실</span>
             </div>
-            <div className="absolute -bottom-[56px] left-4 select-none text-[250px] font-black leading-none tracking-[-0.06em] sm:-bottom-[78px] sm:left-7 sm:text-[360px]" aria-label={`경보 ${level}단계`}>
-              {level}
-              <small className="ml-3 align-[60px] text-[84px] tracking-[-0.04em] sm:align-[78px] sm:text-[120px]">단계</small>
+
+            <div className="relative flex flex-1 flex-col justify-center px-6 py-8 sm:px-11 lg:pr-28">
+              <h2 className="flex items-end gap-5 sm:gap-7">
+                <span className="text-[120px] font-black leading-[0.78] tracking-[-0.06em] sm:text-[168px]">{level}</span>
+                <span className="pb-0.5">
+                  <span className="block text-[15px] font-bold sm:text-[17px]">단계</span>
+                  <span className="mt-1.5 block text-[44px] font-black leading-none tracking-[-0.03em] sm:text-[60px]">{info.name}</span>
+                </span>
+              </h2>
+
+              <ol className="mt-8 grid max-w-[520px] grid-cols-5 gap-1.5" aria-label="경보 단계">
+                {ALERT_LEVELS.map((a) => {
+                  const on = a.level === level
+                  return (
+                    <li
+                      key={a.level}
+                      aria-current={on ? 'step' : undefined}
+                      className={cx('border-2 border-ink py-1 text-center text-[12px] font-bold sm:text-[13px]', on && 'bg-ink')}
+                      style={on ? { color: danger ? 'var(--destructive)' : 'var(--seal)' } : a.level > level ? { opacity: 0.45 } : undefined}
+                    >
+                      {a.name}
+                    </li>
+                  )
+                })}
+              </ol>
+
+              <p className="mt-7 max-w-[520px] text-[19px] font-bold leading-[1.5] sm:text-[22px]">{lead}</p>
+              {rest && <p className="mt-2 max-w-[520px] text-[15px] font-medium leading-[1.7]">{rest}</p>}
             </div>
+
+            <div className="tape relative h-[26px] w-full shrink-0" aria-hidden="true" />
           </div>
 
-          <div className="px-5 py-8 sm:px-8 lg:px-10">
+          <div className="flex flex-col justify-center px-5 py-8 sm:px-8 lg:px-10">
             <div className="corners px-5 pb-4 pt-5 sm:px-6">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-[22px] font-black tracking-[-0.03em]">게이트 발생 기록</h2>

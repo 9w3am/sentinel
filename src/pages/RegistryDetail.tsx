@@ -85,7 +85,7 @@ export default function RegistryDetail() {
           <span className="font-black tracking-[-0.02em]">{WORLD.orgName}</span>
           <span className="ml-auto font-mono text-[13px] text-muted-foreground">등록번호 {regNo}</span>
         </header>
-        <p className="pt-9 text-center text-[32px] font-black tracking-[0.45em] [text-indent:0.45em] sm:text-[38px]">각성자 등록 기록</p>
+        <p className="whitespace-nowrap pt-9 text-center text-[24px] font-black tracking-[0.2em] [text-indent:0.2em] sm:text-[38px] sm:tracking-[0.45em] sm:[text-indent:0.45em]">각성자 등록 기록</p>
 
         <div className="grid gap-6 px-6 pb-8 pt-8 sm:px-10 md:grid-cols-[1fr_150px]">
           <div className="border-t-2 border-foreground">
@@ -106,6 +106,7 @@ export default function RegistryDetail() {
                 </FieldRow>
                 <FieldRow label="소속">{c.affiliation}</FieldRow>
                 {session?.role && <FieldRow label="관리인">{c.owner_name}</FieldRow>}
+                <FillerRows count={basic.length - (session?.role ? 6 : 5)} />
               </div>
               <div className="border-t border-rule sm:border-t-0">
                 {basic.map((f) => (
@@ -113,10 +114,11 @@ export default function RegistryDetail() {
                     {d[f.key]}
                   </FieldRow>
                 ))}
+                <FillerRows count={(session?.role ? 6 : 5) - basic.length} />
               </div>
             </div>
           </div>
-          <div className="order-first md:order-none">
+          <div className="order-first flex flex-col items-center md:order-none md:block">
             <Avatar src={c.avatar_url} name={c.name} kind={c.kind} className="w-[150px]" />
             <svg viewBox="0 0 150 26" className="mt-2 h-6 w-[150px] text-foreground" aria-hidden="true" preserveAspectRatio="none">
               {Array.from(regNo + c.id)
@@ -239,5 +241,19 @@ function BondRow({ r, selfId, selfKind }: { r: Relation; selfId: string; selfKin
       </span>
       <span className="font-mono text-[13px] text-muted-foreground">{rate != null ? `매칭 ${rate.toFixed(1)}%` : ''}</span>
     </li>
+  )
+}
+
+/** 두 열의 칸 수를 맞추는 빈 줄 (넓은 화면에서만) */
+function FillerRows({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="hidden h-[46px] grid-cols-[7.5rem_1fr] border-b border-rule last:border-b-0 sm:grid" aria-hidden="true">
+          <div className="bg-muted" />
+        </div>
+      ))}
+    </>
   )
 }

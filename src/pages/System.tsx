@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { GradeBadge, KindMark, PageTitle, SectionHead, TONE, WRAP, cx } from '../components/ui'
+import { GradeBadge, KindMark, PageTitle, SectionHead, WRAP, cx } from '../components/ui'
 import { GRADES } from '../config/world'
 import { usePageMeta } from '../lib/backend'
 
@@ -15,12 +15,13 @@ const TERMS: [string, string][] = [
   ['게이트', '이계로 통하는 틈. 등급은 마력량 기준.'],
 ]
 
-const MATCH: [number, string, keyof typeof TONE][] = [
-  [40, '비권고', 'muted'],
-  [55, '응급 시', 'warn'],
-  [75, '임시 가이딩', 'ok'],
-  [90, '전담 페어', 'primary'],
-  [100, '각인 적합', 'seal'],
+// [상한, 이름, 설명, 색]
+const MATCH: [number, string, string, string][] = [
+  [40, '비권고', '가이딩 효과가 거의 없음', '#3d3c37'],
+  [55, '응급 시', '폭주 직전 응급 처치만', '#6d6b62'],
+  [75, '임시 가이딩', '단기 임무 동행 가능', '#a5a296'],
+  [90, '전담 페어', '상시 배정 가능', '#e9e5d8'],
+  [100, '각인 적합', '각인 신청 가능', 'var(--seal)'],
 ]
 
 const STEPS: [string, string][] = [
@@ -59,8 +60,26 @@ export default function System() {
       </section>
 
       <section id="grades" className={cx(WRAP, 'scroll-mt-24 pt-14')}>
-        <SectionHead title="등급" />
-        <div className="overflow-x-auto">
+        <h2 className="mb-3 text-[24px] font-black tracking-[-0.03em]">등급</h2>
+        <ul className="border-t-2 border-foreground sm:hidden">
+          {GRADES.map((g) => (
+            <li key={g.value} className="grid grid-cols-[44px_1fr] gap-x-3 border-b border-rule py-3.5">
+              <GradeBadge grade={g.value} />
+              <div className="min-w-0">
+                <p className="font-bold">{g.label}</p>
+                <p className="mt-1.5 text-[14px]">
+                  <span className="mr-2 text-[12px] text-muted-foreground">센티넬</span>
+                  {g.sentinel}
+                </p>
+                <p className="mt-0.5 text-[14px] text-muted-foreground">
+                  <span className="mr-2 text-[12px]">가이드</span>
+                  {g.guide}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto sm:block">
           <table className="table-doc min-w-[680px]">
             <thead>
               <tr>
@@ -100,24 +119,36 @@ export default function System() {
         </div>
         <div>
           <SectionHead title="매칭률" />
-          <div className="flex h-11">
-            {MATCH.map(([to, label, tone], i) => {
+          <div className="flex h-3" aria-hidden="true">
+            {MATCH.map(([to, label, , color], i) => {
+              const from = i === 0 ? 0 : MATCH[i - 1][0]
+              return <div key={label} className="border-r-2 border-background last:border-r-0" style={{ width: `${to - from}%`, background: color }} />
+            })}
+          </div>
+          <div className="relative mt-1.5 h-4 font-mono text-[11px] text-muted-foreground" aria-hidden="true">
+            {[0, ...MATCH.map((m) => m[0])].map((v, i, arr) => (
+              <span key={v} className="absolute whitespace-nowrap" style={{ left: `${v}%`, transform: i === 0 ? undefined : i === arr.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)' }}>
+                {v}
+              </span>
+            ))}
+          </div>
+          <dl className="mt-3">
+            {MATCH.map(([to, label, desc, color], i) => {
               const from = i === 0 ? 0 : MATCH[i - 1][0]
               return (
-                <div key={label} className="grid place-items-center border-r-2 border-background text-[12px] font-bold text-ink last:border-r-0" style={{ width: `${to - from}%`, background: TONE[tone] }}>
-                  {to - from >= 15 ? label : ''}
+                <div key={label} className="grid grid-cols-[112px_1fr_auto] items-center gap-3 border-b border-rule py-2.5">
+                  <dt className="flex items-center gap-2 text-[14px] font-bold">
+                    <span className="h-2.5 w-2.5 shrink-0" style={{ background: color }} />
+                    {label}
+                  </dt>
+                  <dd className="text-[14px] text-muted-foreground">{desc}</dd>
+                  <dd className="font-mono text-[13px]">
+                    {from}–{to === 100 ? 100 : to - 1}%
+                  </dd>
                 </div>
               )
             })}
-          </div>
-          <div className="mt-1 flex justify-between font-mono text-[11px] text-muted-foreground">
-            <span>0</span>
-            <span>40</span>
-            <span>55</span>
-            <span>75</span>
-            <span>90</span>
-            <span>100</span>
-          </div>
+          </dl>
           <p className="mt-4 text-[15px]">
             <b className="text-seal">90% 이상</b>이면 각인 적합. 등록 요원은{' '}
             <Link to="/office/matching" className="underline underline-offset-4 hover:text-seal">
