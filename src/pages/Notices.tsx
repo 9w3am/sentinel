@@ -1,5 +1,6 @@
 import { Fragment, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { RichText } from '../components/RichText'
 import { Emblem, Empty, ErrorBox, Loading, PageTitle, Pill, Tabs, WRAP, cx } from '../components/ui'
 import { WORLD } from '../config/world'
 import { api, useAsync, usePageMeta } from '../lib/backend'
@@ -193,7 +194,7 @@ export function NoticeDetail() {
 
         <div className="px-6 py-10 sm:px-14">
           <h1 className="text-[26px] font-black leading-[1.3] tracking-[-0.03em] sm:text-[30px]">{n.title}</h1>
-          <div className="mt-6 whitespace-pre-line text-[16px] leading-[1.95]">{n.body}</div>
+          <RichText text={n.body} className="mt-6 whitespace-pre-line text-[16px] leading-[1.95]" />
           <p className="mt-10 text-[15px]">위와 같이 알립니다.</p>
         </div>
 

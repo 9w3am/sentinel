@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CharacterCard } from '../../components/CharacterCard'
 import { useSiteContext } from '../../components/Layout'
@@ -434,6 +434,7 @@ function Notices() {
             본문
           </label>
           <textarea id="n-body" className="field min-h-56" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} required />
+          <p className="mt-1 text-[12.5px] text-muted-foreground">이미지 주소(.png .jpg .gif .webp)만 한 줄에 적으면 그림으로, 다른 주소는 링크로 보입니다.</p>
         </div>
         {err ? <ErrorBox error={err} /> : null}
         <div className="flex gap-2">
@@ -516,7 +517,7 @@ function Incidents() {
             <input className="field font-mono" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
           </div>
           <div>
-            <span className="form-label">균열 등급</span>
+            <span className="form-label">게이트 등급</span>
             <select className="field" value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })}>
               {GRADE_VALUES.map((g) => (
                 <option key={g}>{g}</option>
@@ -592,6 +593,7 @@ function Incidents() {
           </li>
         ))}
       </ul>
+      <GateRosters incidents={incidents.data ?? []} reload={incidents.reload} />
     </div>
   )
 }
@@ -707,6 +709,109 @@ function RulesEditor() {
         <p>'제1조 (목적)'처럼 제n조로 시작하는 줄은 조항 제목이 되고, 그 아래 줄이 조항 내용이 됩니다.</p>
         <p className="mt-2">'부칙'으로 시작하는 줄은 부칙 제목이 됩니다. 조항 사이는 빈 줄로 띄워 주세요.</p>
         <p className="mt-2">커뮤 규칙을 협회 규정 말투로 적으면 겉모습이 그대로 유지됩니다.</p>
+      </div>
+    </div>
+  )
+}
+
+// ── 게이트 참여 명단
+function GateRosters({ incidents, reload }: { incidents: Incident[]; reload: () => void }) {
+  const [open, setOpen] = useState<string | null>(null)
+  const counts = useAsync(async () => {
+    const rows = await Promise.all(incidents.map(async (i) => [i.id, (await api.listEntries(i.id)).length] as const))
+    return new Map(rows)
+  }, [incidents.map((i) => i.id).join(',')])
+  const roster = useAsync(() => (open ? api.listEntries(open) : Promise.resolve([])), [open])
+
+  const closeGate = async (i: Incident) => {
+    if (!confirm(`${i.code} 게이트를 종결 처리할까요? 이후로는 참여 신청을 받지 않습니다.`)) return
+    try {
+      await api.saveIncident({ ...i, status: 'closed' })
+      reload()
+    } catch (e) {
+      alert(errMsg(e))
+    }
+  }
+
+  if (incidents.length === 0) return null
+
+  return (
+    <div className="lg:col-span-2">
+      <h3 className="mb-3 border-b-2 border-foreground pb-2 text-[20px] font-black tracking-[-0.03em]">게이트 참여 명단</h3>
+      <div className="overflow-x-auto">
+        <table className="table-doc min-w-[680px]">
+          <thead>
+            <tr>
+              <th className="w-24">코드</th>
+              <th>명칭</th>
+              <th className="w-24">상태</th>
+              <th className="w-20 text-right">참여</th>
+              <th className="w-52 text-right">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {incidents.map((i) => (
+              <Fragment key={i.id}>
+                <tr>
+                  <td className="font-mono text-[13px]">{i.code}</td>
+                  <td className="truncate">{i.title}</td>
+                  <td>
+                    <Pill tone={i.status === 'open' ? 'danger' : i.status === 'responding' ? 'seal' : 'muted'}>{incidentStatusLabel(i.status)}</Pill>
+                  </td>
+                  <td className="text-right font-mono text-[14px]">{counts.data?.get(i.id) ?? '—'}명</td>
+                  <td className="text-right text-[13px]">
+                    <span className="inline-flex gap-3">
+                      <button type="button" onClick={() => setOpen(open === i.id ? null : i.id)} className="hover:text-seal">
+                        {open === i.id ? '명단 닫기' : '명단 보기'}
+                      </button>
+                      {i.status !== 'closed' && (
+                        <button type="button" onClick={() => closeGate(i)} className="text-destructive hover:underline">
+                          종결 처리
+                        </button>
+                      )}
+                      <Link to={`/incidents/${i.id}`} className="hover:text-seal">
+                        보기
+                      </Link>
+                    </span>
+                  </td>
+                </tr>
+                {open === i.id && (
+                  <tr>
+                    <td colSpan={5} className="bg-muted">
+                      {roster.loading ? (
+                        <Loading />
+                      ) : (roster.data ?? []).length === 0 ? (
+                        <p className="py-2 text-[14px] text-muted-foreground">참여 신청이 없습니다.</p>
+                      ) : (
+                        <ul className="grid gap-x-8 sm:grid-cols-2">
+                          {(roster.data ?? []).map((e) => (
+                            <li key={e.id} className="flex items-center gap-2 border-b border-rule py-2 text-[14px]">
+                              <b className="font-bold">{e.character?.name ?? '비공개 요원'}</b>
+                              {e.character && <span className="text-muted-foreground">{e.character.grade}급</span>}
+                              {e.note && <span className="truncate text-muted-foreground">· {e.note}</span>}
+                              <button
+                                type="button"
+                                className="ml-auto text-[12px] text-muted-foreground hover:text-destructive"
+                                onClick={async () => {
+                                  if (!confirm('이 참여 신청을 취소할까요?')) return
+                                  await api.leaveIncident(e.id).catch((err) => alert(errMsg(err)))
+                                  roster.reload()
+                                  counts.reload()
+                                }}
+                              >
+                                취소
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

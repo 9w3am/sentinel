@@ -1,4 +1,6 @@
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { saveElementAsPng } from '../lib/exportImage'
 import { Avatar, Emblem, Empty, ErrorBox, FieldRow, GradeBadge, Icon, KindBadge, Loading, Pill, SectionHead, StatusPill, WRAP, cx } from '../components/ui'
 import { DETAIL_FIELDS, RELATION_TONE, WORLD, gradeLabel, kindLabel } from '../config/world'
 import { api, useAsync, useAuth, usePageMeta } from '../lib/backend'
@@ -14,6 +16,9 @@ export default function RegistryDetail() {
   const c = ch.data
   const canManage = !!c && !!session && (c.owner_id === session.userId || session.role === 'admin')
   const secret = useAsync(() => (canManage ? api.getSecret(id) : Promise.resolve(null)), [id, canManage])
+  const recordRef = useRef<HTMLElement>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveErr, setSaveErr] = useState<unknown>(null)
   usePageMeta(c ? `${c.name} 등록 기록` : '등록 기록', c ? `${kindLabel(c.kind)} ${c.grade}급 · ${c.affiliation ?? ''}` : undefined)
 
   if (ch.loading && !c) return <Loading />
@@ -74,7 +79,7 @@ export default function RegistryDetail() {
         </div>
       )}
 
-      <article className="relative mx-auto mt-6 max-w-4xl border border-rule bg-card">
+      <article ref={recordRef} className="relative mx-auto mt-6 max-w-4xl border border-rule bg-card">
         <header className="flex flex-wrap items-center gap-3 border-b border-rule px-6 py-4 sm:px-10">
           <Emblem size={24} />
           <span className="font-black tracking-[-0.02em]">{WORLD.orgName}</span>
@@ -158,7 +163,30 @@ export default function RegistryDetail() {
         </footer>
       </article>
 
-      <div className="mx-auto mt-12 grid max-w-4xl gap-12 lg:grid-cols-2">
+      <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-end gap-3">
+        {saveErr ? <span className="text-[13px] text-destructive">이미지를 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.</span> : null}
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={saving}
+          onClick={async () => {
+            if (!recordRef.current) return
+            setSaving(true)
+            setSaveErr(null)
+            try {
+              await saveElementAsPng(recordRef.current, `${WORLD.orgName}_등록기록_${c.name}`)
+            } catch (e) {
+              setSaveErr(e)
+            } finally {
+              setSaving(false)
+            }
+          }}
+        >
+          {saving ? '만드는 중…' : '이미지로 저장'}
+        </button>
+      </div>
+
+      <div className="mx-auto mt-10 grid max-w-4xl gap-12 lg:grid-cols-2">
         <div>
           <SectionHead
             title="결속 관계"

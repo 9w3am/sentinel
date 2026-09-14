@@ -50,7 +50,7 @@ export default function Home() {
     <>
       {/* ── 경보판 + 게이트 기록 */}
       <section className="border-b border-rule">
-        <div className="grid lg:grid-cols-[minmax(0,780px)_1fr]">
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,780px)_1fr]">
           <div className="alert-cut relative min-h-[470px] overflow-hidden text-ink sm:min-h-[540px] lg:min-h-[560px]" style={{ background: danger ? 'var(--destructive)' : 'var(--seal)' }}>
             <div className="dots pointer-events-none absolute right-10 top-0 h-[360px] w-[360px] opacity-55" />
             <div className="tape pointer-events-none absolute -right-[70px] top-[34px] h-[30px] w-[340px] rotate-[38deg]" />

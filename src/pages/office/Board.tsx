@@ -1,5 +1,6 @@
 import { Fragment, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { RichText } from '../../components/RichText'
 import { Emblem, Empty, ErrorBox, Loading, Pill, Segmented, Tabs } from '../../components/ui'
 import { POST_CATEGORIES, WORLD, categoryLabel } from '../../config/world'
 import { api, useAsync, useAuth, usePageMeta } from '../../lib/backend'
@@ -177,6 +178,7 @@ export function BoardNew() {
               본문
             </label>
             <textarea id="b" className="field min-h-72 leading-[1.9]" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={20000} />
+            <p className="mt-1 text-[12.5px] text-muted-foreground">이미지 주소(.png .jpg .gif .webp)만 한 줄에 적으면 그림으로, 다른 주소는 링크로 보입니다.</p>
           </div>
           {err ? <ErrorBox error={err} /> : null}
           <div className="flex justify-end gap-2 border-t border-rule pt-5">
@@ -303,7 +305,7 @@ export function BoardDetail() {
           <span className="bg-muted px-3 py-3.5 text-[14px] text-muted-foreground">제목</span>
           <h1 className="px-3 py-3 text-[20px] font-black leading-snug tracking-[-0.02em]">{p.title}</h1>
         </div>
-        <div className="whitespace-pre-wrap px-6 py-10 text-[16px] leading-[1.95] sm:px-10">{p.body}</div>
+        <RichText text={p.body} className="whitespace-pre-wrap px-6 py-10 text-[16px] leading-[1.95] sm:px-10" />
         <p className="px-6 pb-8 text-right text-[15px] sm:px-10">끝.</p>
         {canDelete && (
           <div className="flex justify-end border-t border-rule px-6 py-3">
@@ -352,7 +354,7 @@ export function BoardDetail() {
                   </button>
                 )}
               </div>
-              <p className="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed">{c.body}</p>
+              <RichText text={c.body} className="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed" />
             </li>
           ))}
         </ul>
