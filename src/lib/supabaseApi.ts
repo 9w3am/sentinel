@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Api, Character, CharacterBrief, Comment, Invite, Member, Notice, Post, Relation, Role, Session, Settings } from './types'
+import type { Api, Character, CharacterBrief, Comment, Incident, IncidentEntry, Invite, Member, Notice, Post, Relation, Role, Session, Settings, SitePage } from './types'
 import { randomCode, uid } from './util'
 
 const BRIEF = 'id,name,codename,kind,grade,avatar_url'
@@ -11,6 +11,12 @@ export function createSupabaseApi(url: string, key: string): Api {
   function must<T = any>(r: { data?: unknown; error: unknown }): T {
     if (r.error) throw r.error
     return r.data as T
+  }
+
+  // 002 마이그레이션 전이면 테이블·컬럼이 없다 → 조용히 빈 값으로 처리
+  const missingTable = (e: unknown) => {
+    const code = (e as { code?: string } | null)?.code
+    return code === 'PGRST205' || code === 'PGRST204' || code === '42P01' || code === '42703'
   }
 
   async function currentUid() {
@@ -137,6 +143,9 @@ export function createSupabaseApi(url: string, key: string): Api {
     async listIncidents() {
       return must(await sb.from('incidents').select('*').order('occurred_at', { ascending: false }))
     },
+    async getIncident(id) {
+      return must(await sb.from('incidents').select('*').eq('id', id).maybeSingle()) as Incident | null
+    },
     async saveIncident(i) {
       const row = {
         code: i.code ?? '',
@@ -152,6 +161,46 @@ export function createSupabaseApi(url: string, key: string): Api {
     },
     async deleteIncident(id) {
       must(await sb.from('incidents').delete().eq('id', id))
+    },
+
+    // ── 고정 문서
+    async getPage(slug) {
+      const { data, error } = await sb.from('site_pages').select('*').eq('slug', slug).maybeSingle()
+      if (error) {
+        if (missingTable(error)) return null
+        throw error
+      }
+      return data as SitePage | null
+    },
+    async savePage(p) {
+      must(await sb.from('site_pages').upsert({ ...p, updated_at: new Date().toISOString() }))
+    },
+
+    // ── 게이트 참여
+    async listEntries(incidentId) {
+      const { data, error } = await sb.from('incident_entries').select('*').eq('incident_id', incidentId).order('created_at')
+      if (error) {
+        if (missingTable(error)) return []
+        throw error
+      }
+      const rows = (data ?? []) as IncidentEntry[]
+      const briefs = await briefMap(rows.map((r) => r.character_id))
+      return rows.map((r) => ({ ...r, character: briefs.get(r.character_id) ?? null }))
+    },
+    async joinIncident(incidentId, characterId, note) {
+      const me = await requireUid()
+      must(await sb.from('incident_entries').insert({ incident_id: incidentId, character_id: characterId, note: note.trim() || null, owner_id: me }))
+    },
+    async leaveIncident(entryId) {
+      must(await sb.from('incident_entries').delete().eq('id', entryId))
+    },
+    async listPostsByIncident(incidentId) {
+      const { data, error } = await sb.from('posts').select('*').eq('incident_id', incidentId).order('created_at', { ascending: false })
+      if (error) {
+        if (missingTable(error)) return []
+        throw error
+      }
+      return withAuthors((data ?? []) as Post[])
     },
 
     // ── 등록증
@@ -282,7 +331,9 @@ export function createSupabaseApi(url: string, key: string): Api {
     },
     async createPost(p) {
       const me = await requireUid()
-      const row = must(await sb.from('posts').insert({ ...p, author_id: me }).select('id').single())
+      const { incident_id, ...rest } = p
+      const payload = incident_id ? { ...rest, incident_id, author_id: me } : { ...rest, author_id: me }
+      const row = must(await sb.from('posts').insert(payload).select('id').single())
       return row.id as string
     },
     async deletePost(id) {

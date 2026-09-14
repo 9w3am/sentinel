@@ -1,19 +1,20 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CharacterCard } from '../../components/CharacterCard'
 import { useSiteContext } from '../../components/Layout'
 import { AlertSegments, Empty, ErrorBox, GradeBadge, Icon, Loading, Pill, StatusPill, Tabs, alertColor, copyText, cx } from '../../components/ui'
-import { ALERT_LEVELS, GRADE_VALUES, INCIDENT_STATUS, incidentStatusLabel } from '../../config/world'
+import { ALERT_LEVELS, DEFAULT_RULES, GRADE_VALUES, INCIDENT_STATUS, incidentStatusLabel } from '../../config/world'
 import { api, useAsync, useAuth, usePageMeta } from '../../lib/backend'
 import type { Incident, Notice, Role } from '../../lib/types'
 import { docNumber, errMsg, fmtDate } from '../../lib/util'
 
-type Tab = 'invites' | 'review' | 'roster' | 'members' | 'notices' | 'incidents' | 'alert'
+type Tab = 'invites' | 'review' | 'roster' | 'members' | 'notices' | 'incidents' | 'alert' | 'rules'
 
 export default function Admin() {
   usePageMeta('관리부 콘솔')
   const { session } = useAuth()
-  const [tab, setTab] = useState<Tab>('invites')
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<Tab>((params.get('tab') as Tab) || 'invites')
   const chars = useAsync(() => (session?.role === 'admin' ? api.listAllCharacters() : Promise.resolve([])), [session?.role])
 
   if (session?.role !== 'admin')
@@ -43,6 +44,7 @@ export default function Admin() {
           { value: 'notices', label: '알림마당' },
           { value: 'incidents', label: '게이트 기록' },
           { value: 'alert', label: '경보 단계' },
+          { value: 'rules', label: '협회 규정' },
         ]}
       />
       <div className="pt-8">
@@ -53,6 +55,7 @@ export default function Admin() {
         {tab === 'notices' && <Notices />}
         {tab === 'incidents' && <Incidents />}
         {tab === 'alert' && <AlertLevel />}
+        {tab === 'rules' && <RulesEditor />}
       </div>
     </div>
   )
@@ -645,6 +648,66 @@ function AlertLevel() {
       <button type="button" className="btn btn-seal px-6" onClick={save}>
         {saved ? '발령 완료' : '경보 단계 발령'}
       </button>
+    </div>
+  )
+}
+
+// ── 협회 규정
+function RulesEditor() {
+  const page = useAsync(() => api.getPage('rules'), [])
+  const [title, setTitle] = useState<string | null>(null)
+  const [body, setBody] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const [err, setErr] = useState<unknown>(null)
+
+  if (page.loading) return <Loading />
+
+  const t = title ?? page.data?.title ?? DEFAULT_RULES.title
+  const b = body ?? page.data?.body ?? DEFAULT_RULES.body
+
+  const save = async () => {
+    setErr(null)
+    try {
+      await api.savePage({ slug: 'rules', title: t.trim(), body: b })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      page.reload()
+    } catch (e) {
+      setErr(e)
+    }
+  }
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1fr_300px] lg:items-start">
+      <div className="space-y-4">
+        <div>
+          <label className="form-label" htmlFor="r-title">
+            제목
+          </label>
+          <input id="r-title" className="field" value={t} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
+        </div>
+        <div>
+          <label className="form-label" htmlFor="r-body">
+            본문
+          </label>
+          <textarea id="r-body" className="field min-h-[480px] font-mono text-[14px] leading-[1.8]" value={b} onChange={(e) => setBody(e.target.value)} />
+        </div>
+        {err ? <ErrorBox error={err} /> : null}
+        <div className="flex gap-2">
+          <button type="button" className="btn btn-primary px-6" onClick={save}>
+            {saved ? '저장됨' : '규정 저장'}
+          </button>
+          <Link to="/rules" className="btn">
+            공개 화면 보기
+          </Link>
+        </div>
+      </div>
+      <div className="text-[13.5px] leading-relaxed text-muted-foreground">
+        <p className="mb-2 font-bold text-foreground">작성 방법</p>
+        <p>'제1조 (목적)'처럼 제n조로 시작하는 줄은 조항 제목이 되고, 그 아래 줄이 조항 내용이 됩니다.</p>
+        <p className="mt-2">'부칙'으로 시작하는 줄은 부칙 제목이 됩니다. 조항 사이는 빈 줄로 띄워 주세요.</p>
+        <p className="mt-2">커뮤 규칙을 협회 규정 말투로 적으면 겉모습이 그대로 유지됩니다.</p>
+      </div>
     </div>
   )
 }

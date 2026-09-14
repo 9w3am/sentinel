@@ -87,7 +87,7 @@ export default function Home() {
                 return (
                   <Link
                     key={i.id}
-                    to="/incidents"
+                    to={`/incidents/${i.id}`}
                     className={cx('grid h-14 grid-cols-[44px_68px_38px_minmax(64px,1fr)_64px] items-center gap-1.5 border-t border-rule text-[15px] hover:bg-muted xl:grid-cols-[56px_84px_44px_minmax(64px,1fr)_68px]', i.status === 'closed' && 'text-muted-foreground')}
                   >
                     <span className="font-mono text-[13px] text-muted-foreground">{when(i.occurred_at)}</span>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ErrorBox, Loading, PageTitle, StatCard, Tabs, WRAP, cx } from '../components/ui'
 import { INCIDENT_STATUS, incidentStatusLabel } from '../config/world'
 import { api, useAsync, usePageMeta } from '../lib/backend'
@@ -68,7 +69,9 @@ export default function Incidents() {
                       </td>
                       <td>{i.location}</td>
                       <td>
-                        <span className="font-medium">{i.title}</span>
+                        <Link to={`/incidents/${i.id}`} className="font-medium hover:text-seal">
+                          {i.title}
+                        </Link>
                         {i.body && <span className="block text-[13px] text-muted-foreground">{i.body}</span>}
                       </td>
                       <td className="text-right text-[14px] font-bold" style={{ color: c }}>

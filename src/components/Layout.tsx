@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { ALERT_LEVELS, WORLD } from '../config/world'
 import { api, useAsync, useAuth } from '../lib/backend'
@@ -7,6 +7,7 @@ import { Emblem, Empty, Icon, Loading, WRAP, alertColor, cx } from './ui'
 
 const NAV = [
   { to: '/about', label: '협회 소개', end: false },
+  { to: '/rules', label: '협회 규정', end: false },
   { to: '/incidents', label: '게이트 현황', end: false },
   { to: '/system', label: '등급 안내', end: false },
   { to: '/registry', label: '요원 명부', end: true },
@@ -48,7 +49,9 @@ export function SiteLayout() {
       <div className="flex min-h-screen flex-col lg:pl-[76px]">
         <TopBar onMenu={() => setOpen(true)} level={level} />
         <main className="flex-1">
-          <Outlet context={ctx} />
+          <Suspense fallback={<Loading />}>
+            <Outlet context={ctx} />
+          </Suspense>
         </main>
         <Footer />
       </div>
@@ -80,8 +83,32 @@ function Rail({ level, onMenu }: { level: number; onMenu: () => void }) {
   )
 }
 
+// 집무실 알림 숫자: 받은 결속 신청 · 반려된 내 등록증 · (관리부) 심사 대기
+function useOfficeBadges() {
+  const { session } = useAuth()
+  const { pathname } = useLocation()
+  const data = useAsync(async () => {
+    if (!session?.role) return { bonds: 0, rejected: 0, review: 0 }
+    const [mine, rels, all] = await Promise.all([api.listMyCharacters(), api.listMyRelations(), session.role === 'admin' ? api.listAllCharacters() : Promise.resolve([])])
+    const ids = new Set(mine.map((c) => c.id))
+    return {
+      bonds: rels.filter((r) => r.status === 'requested' && ids.has(r.to_character_id) && r.created_by !== session.userId).length,
+      rejected: mine.filter((c) => c.status === 'rejected').length,
+      review: all.filter((c) => c.status === 'pending').length,
+    }
+  }, [session?.userId, session?.role, pathname])
+  return data.data ?? { bonds: 0, rejected: 0, review: 0 }
+}
+
+function Badge({ n, tone = 'seal' }: { n: number; tone?: 'seal' | 'danger' }) {
+  if (n <= 0) return null
+  return <span className={cx('grid h-[18px] min-w-[18px] place-items-center px-1 text-[11px] font-bold leading-none text-ink', tone === 'danger' ? 'bg-destructive' : 'bg-seal')}>{n}</span>
+}
+
 function TopBar({ onMenu, level }: { onMenu: () => void; level: number }) {
   const { session } = useAuth()
+  const badges = useOfficeBadges()
+  const total = badges.bonds + badges.rejected + badges.review
   return (
     <header className="sticky top-0 z-30 border-b border-rule bg-background/95 backdrop-blur-sm">
       <div className="flex h-16 items-center gap-6 px-5 sm:px-8 lg:px-10">
@@ -103,8 +130,13 @@ function TopBar({ onMenu, level }: { onMenu: () => void; level: number }) {
           {session ? (
             <>
               <span className="hidden text-muted-foreground sm:inline">{session.displayName}</span>
-              <Link to="/office" className="btn btn-primary btn-sm">
+              <Link to="/office" className="btn btn-primary btn-sm relative" aria-label={total ? `집무실, 확인할 알림 ${total}건` : '집무실'}>
                 집무실
+                {total > 0 && (
+                  <span className="absolute -right-2 -top-2">
+                    <Badge n={total} tone="danger" />
+                  </span>
+                )}
               </Link>
             </>
           ) : (
@@ -200,6 +232,7 @@ export function OfficeLayout() {
   const loc = useLocation()
   const navigate = useNavigate()
   const ctx = useSiteContext()
+  const badges = useOfficeBadges()
 
   const signOut = async () => {
     await api.signOut()
@@ -243,15 +276,25 @@ export function OfficeLayout() {
           </div>
         </div>
         <nav className={cx(WRAP, 'flex gap-0.5 overflow-x-auto pb-3')} aria-label="집무실 메뉴">
-          {items.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('tab shrink-0', n.to === '/office/admin' && !isActive && 'text-seal')} aria-selected={undefined}>
-              {({ isActive }) => <span aria-current={isActive ? 'page' : undefined} className={cx('-mx-3 -my-1.5 block px-3 py-1.5', isActive && 'bg-foreground font-bold text-background')}>{n.label}</span>}
-            </NavLink>
-          ))}
+          {items.map((n) => {
+            const count = n.to === '/office/bonds' ? badges.bonds : n.to === '/office/cards' ? badges.rejected : n.to === '/office/admin' ? badges.review : 0
+            return (
+              <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('tab shrink-0', n.to === '/office/admin' && !isActive && 'text-seal')}>
+                {({ isActive }) => (
+                  <span aria-current={isActive ? 'page' : undefined} className={cx('-mx-3 -my-1.5 flex items-center gap-1.5 px-3 py-1.5', isActive && 'bg-foreground font-bold text-background')}>
+                    {n.label}
+                    <Badge n={count} tone={n.to === '/office/cards' ? 'danger' : 'seal'} />
+                  </span>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
       </section>
       <div className={cx(WRAP, 'py-10')}>
-        <Outlet context={ctx} />
+        <Suspense fallback={<Loading />}>
+          <Outlet context={ctx} />
+        </Suspense>
       </div>
     </>
   )

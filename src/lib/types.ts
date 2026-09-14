@@ -47,10 +47,28 @@ export interface Relation {
   to?: CharacterBrief | null
 }
 
+export interface SitePage {
+  slug: string
+  title: string
+  body: string
+  updated_at: string
+}
+
+export interface IncidentEntry {
+  id: string
+  incident_id: string
+  character_id: string
+  owner_id: string
+  note: string | null
+  created_at: string
+  character?: CharacterBrief | null
+}
+
 export interface Post {
   id: string
   author_id: string
   character_id: string | null
+  incident_id?: string | null
   category: string
   title: string
   body: string
@@ -136,8 +154,19 @@ export interface Api {
   saveNotice(n: Partial<Notice> & { title: string; body: string }): Promise<void>
   deleteNotice(id: string): Promise<void>
   listIncidents(): Promise<Incident[]>
+  getIncident(id: string): Promise<Incident | null>
   saveIncident(i: Partial<Incident> & { title: string }): Promise<void>
   deleteIncident(id: string): Promise<void>
+
+  // 고정 문서 (협회 규정)
+  getPage(slug: string): Promise<SitePage | null>
+  savePage(p: { slug: string; title: string; body: string }): Promise<void>
+
+  // 게이트 참여
+  listEntries(incidentId: string): Promise<IncidentEntry[]>
+  joinIncident(incidentId: string, characterId: string, note: string): Promise<void>
+  leaveIncident(entryId: string): Promise<void>
+  listPostsByIncident(incidentId: string): Promise<Post[]>
 
   // 등록증
   listPublicCharacters(): Promise<Character[]>
@@ -163,7 +192,7 @@ export interface Api {
   // 게시판
   listPosts(category?: string): Promise<Post[]>
   getPost(id: string): Promise<Post | null>
-  createPost(p: { category: string; title: string; body: string; character_id: string | null }): Promise<string>
+  createPost(p: { category: string; title: string; body: string; character_id: string | null; incident_id?: string | null }): Promise<string>
   deletePost(id: string): Promise<void>
   listComments(postId: string): Promise<Comment[]>
   addComment(postId: string, body: string, characterId: string | null): Promise<void>

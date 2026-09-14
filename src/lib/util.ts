@@ -107,6 +107,7 @@ export function errMsg(e: unknown) {
   if (/Email not confirmed/i.test(raw)) return '이메일 확인이 완료되지 않은 계정입니다. 관리부에 문의할 것.'
   if (/CANNOT_DEMOTE_SELF/.test(raw)) return '본인의 관리 권한은 해제할 수 없습니다.'
   if (/FORBIDDEN|row-level security|permission denied/i.test(raw)) return '권한이 없습니다.'
+  if (/incident_entries/i.test(raw) && /duplicate|unique/i.test(raw)) return '이미 참여 신청한 등록증입니다.'
   if (/duplicate key.*relations|relations_from_character_id/i.test(raw)) return '이미 신청되었거나 성립된 결속입니다.'
   return raw
 }

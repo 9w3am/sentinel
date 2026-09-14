@@ -1,23 +1,31 @@
+import { lazy } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { OfficeLayout, SiteLayout } from './components/Layout'
 import { AuthProvider } from './lib/backend'
-import About from './pages/About'
-import AuthPage from './pages/AuthPage'
 import Home from './pages/Home'
-import Incidents from './pages/Incidents'
-import NotFound from './pages/NotFound'
-import { NoticeDetail, NoticeList } from './pages/Notices'
-import Registry from './pages/Registry'
-import RegistryDetail from './pages/RegistryDetail'
-import RegistryMap from './pages/RegistryMap'
-import System from './pages/System'
-import Admin from './pages/admin/Admin'
-import { BoardDetail, BoardList, BoardNew } from './pages/office/Board'
-import Bonds from './pages/office/Bonds'
-import CardForm from './pages/office/CardForm'
-import Matching from './pages/office/Matching'
-import MyCards from './pages/office/MyCards'
-import Office from './pages/office/Office'
+
+// 첫 화면 외에는 필요할 때 불러온다
+const About = lazy(() => import('./pages/About'))
+const AuthPage = lazy(() => import('./pages/AuthPage'))
+const Incidents = lazy(() => import('./pages/Incidents'))
+const IncidentDetail = lazy(() => import('./pages/IncidentDetail'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+const NoticeList = lazy(() => import('./pages/Notices').then((m) => ({ default: m.NoticeList })))
+const NoticeDetail = lazy(() => import('./pages/Notices').then((m) => ({ default: m.NoticeDetail })))
+const Registry = lazy(() => import('./pages/Registry'))
+const RegistryDetail = lazy(() => import('./pages/RegistryDetail'))
+const RegistryMap = lazy(() => import('./pages/RegistryMap'))
+const Rules = lazy(() => import('./pages/Rules'))
+const System = lazy(() => import('./pages/System'))
+const Admin = lazy(() => import('./pages/admin/Admin'))
+const BoardList = lazy(() => import('./pages/office/Board').then((m) => ({ default: m.BoardList })))
+const BoardNew = lazy(() => import('./pages/office/Board').then((m) => ({ default: m.BoardNew })))
+const BoardDetail = lazy(() => import('./pages/office/Board').then((m) => ({ default: m.BoardDetail })))
+const Bonds = lazy(() => import('./pages/office/Bonds'))
+const CardForm = lazy(() => import('./pages/office/CardForm'))
+const Matching = lazy(() => import('./pages/office/Matching'))
+const MyCards = lazy(() => import('./pages/office/MyCards'))
+const Office = lazy(() => import('./pages/office/Office'))
 
 export default function App() {
   return (
@@ -27,10 +35,12 @@ export default function App() {
           <Route element={<SiteLayout />}>
             <Route index element={<Home />} />
             <Route path="about" element={<About />} />
+            <Route path="rules" element={<Rules />} />
             <Route path="system" element={<System />} />
             <Route path="notices" element={<NoticeList />} />
             <Route path="notices/:id" element={<NoticeDetail />} />
             <Route path="incidents" element={<Incidents />} />
+            <Route path="incidents/:id" element={<IncidentDetail />} />
             <Route path="registry" element={<Registry />} />
             <Route path="registry/map" element={<RegistryMap />} />
             <Route path="registry/:id" element={<RegistryDetail />} />

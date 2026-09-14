@@ -115,6 +115,8 @@ export function BoardNew() {
   const navigate = useNavigate()
   const [category, setCategory] = useState(params.get('c') || 'general')
   const [characterId, setCharacterId] = useState('')
+  const [incidentId, setIncidentId] = useState(params.get('gate') || '')
+  const gates = useAsync(() => api.listIncidents(), [])
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
@@ -125,7 +127,7 @@ export function BoardNew() {
     setBusy(true)
     setErr(null)
     try {
-      const id = await api.createPost({ category, title: title.trim(), body, character_id: characterId || null })
+      const id = await api.createPost({ category, title: title.trim(), body, character_id: characterId || null, incident_id: incidentId || null })
       navigate(`/office/board/${id}`, { replace: true })
     } catch (e) {
       setErr(e)
@@ -146,9 +148,23 @@ export function BoardNew() {
             <Segmented name="분류" value={category} onChange={setCategory} options={POST_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))} />
             <p className="mt-1.5 text-[13px] text-muted-foreground">{POST_CATEGORIES.find((c) => c.value === category)?.desc}</p>
           </div>
-          <div>
-            <span className="form-label">기안 명의</span>
-            <SignerSelect value={characterId} onChange={setCharacterId} />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <span className="form-label">기안 명의</span>
+              <SignerSelect value={characterId} onChange={setCharacterId} />
+            </div>
+            <div>
+              <span className="form-label">관련 게이트 (선택)</span>
+              <select className="field" value={incidentId} onChange={(e) => setIncidentId(e.target.value)} aria-label="관련 게이트">
+                <option value="">없음</option>
+                {(gates.data ?? []).map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.code} · {g.grade}급 · {g.location}
+                    {g.status === 'closed' ? ' (종결)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <label className="form-label" htmlFor="t">
@@ -187,6 +203,7 @@ export function BoardDetail() {
   const [characterId, setCharacterId] = useState('')
   const [busy, setBusy] = useState(false)
   const p = post.data
+  const gate = useAsync(() => (p?.incident_id ? api.getIncident(p.incident_id) : Promise.resolve(null)), [p?.incident_id])
   usePageMeta(p?.title ?? '기안')
 
   if (post.loading) return <Loading />
@@ -217,6 +234,16 @@ export function BoardDetail() {
     ],
     ['관리인', p.author_name ?? '요원'],
     ['시행일', fmtDate(p.created_at, true)],
+    ...(gate.data
+      ? ([
+          [
+            '관련 게이트',
+            <Link to={`/incidents/${gate.data.id}`} className="hover:text-seal">
+              {gate.data.code} · {gate.data.location}
+            </Link>,
+          ],
+        ] as [string, ReactNode][])
+      : []),
     ['의견', `${comments.data?.length ?? 0}건`],
   ]
 

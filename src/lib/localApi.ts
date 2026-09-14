@@ -1,6 +1,6 @@
 // Supabase 가 연결되지 않았을 때 쓰는 시연용 백엔드.
 // 데이터는 이 브라우저의 localStorage 에만 저장된다. 권한 규칙은 schema.sql 과 같게 흉내 낸다.
-import type { Api, Character, CharacterBrief, Comment, Incident, Invite, Notice, Post, Relation, Role, Session, Settings } from './types'
+import type { Api, Character, CharacterBrief, Comment, Incident, IncidentEntry, Invite, Notice, Post, Relation, Role, Session, Settings, SitePage } from './types'
 import { randomCode, uid } from './util'
 
 interface LUser {
@@ -22,6 +22,8 @@ interface DB {
   notices: Notice[]
   incidents: Incident[]
   settings: Settings
+  pages: SitePage[]
+  entries: IncidentEntry[]
   session: string | null
   docSeq: number
 }
@@ -69,6 +71,8 @@ function seed(): DB {
     relations: [{ id: uid(), from_character_id: 'c-test1', to_character_id: 'c-test2', kind: '전담 페어', description: null, status: 'accepted', created_by: npc, created_at: ago(200) }],
     posts: [],
     comments: [],
+    pages: [],
+    entries: [],
     notices: [
       { id: uid(), doc_no: 1, title: '경보 2단계 발령 및 출입 통제 안내', body: '경보 2단계(주의)를 발령합니다.\n\n1. B급 이상 요원은 소속 지부에서 대기합니다.\n2. 활성 게이트 반경 500m 안쪽은 비각성자 출입을 통제합니다.\n3. 해제 시각은 상황실 판단에 따라 따로 알립니다.', level: 'warning', pinned: true, created_at: ago(1) },
       { id: uid(), doc_no: 2, title: '하반기 정기 등급 재측정 일정', body: '등록 요원 전원을 대상으로 하반기 정기 등급 재측정을 실시합니다.\n\n일정은 소속별로 따로 안내합니다.', level: 'normal', pinned: false, created_at: ago(50) },
@@ -95,6 +99,9 @@ export function createLocalApi(): Api {
   } catch {
     db = seed()
   }
+  // 이전 버전에 저장된 시연 데이터에는 새 항목이 없다
+  db.pages ??= []
+  db.entries ??= []
   const listeners = new Set<() => void>()
   const save = () => {
     try {
@@ -219,7 +226,56 @@ export function createLocalApi(): Api {
     async deleteIncident(id) {
       need(isAdmin())
       db.incidents = db.incidents.filter((x) => x.id !== id)
+      db.entries = db.entries.filter((e) => e.incident_id !== id)
       save()
+    },
+    async getIncident(id) {
+      return clone(db.incidents.find((x) => x.id === id) ?? null)
+    },
+
+    async getPage(slug) {
+      return clone(db.pages.find((p) => p.slug === slug) ?? null)
+    },
+    async savePage(p) {
+      need(isAdmin())
+      const row: SitePage = { ...p, updated_at: now() }
+      const idx = db.pages.findIndex((x) => x.slug === p.slug)
+      if (idx >= 0) db.pages[idx] = row
+      else db.pages.push(row)
+      save()
+    },
+
+    async listEntries(incidentId) {
+      return clone(
+        db.entries
+          .filter((e) => e.incident_id === incidentId)
+          .sort((a, b) => a.created_at.localeCompare(b.created_at))
+          .map((e) => ({ ...e, character: brief(e.character_id) })),
+      )
+    },
+    async joinIncident(incidentId, characterId, note) {
+      need(isMember())
+      const c = db.characters.find((x) => x.id === characterId)
+      const inc = db.incidents.find((x) => x.id === incidentId)
+      need(!!c && c.owner_id === me() && c.status === 'approved' && !!inc && inc.status !== 'closed')
+      if (db.entries.some((e) => e.incident_id === incidentId && e.character_id === characterId)) throw new Error('이미 참여 신청한 등록증입니다.')
+      db.entries.push({ id: uid(), incident_id: incidentId, character_id: characterId, owner_id: me()!, note: note.trim() || null, created_at: now() })
+      save()
+    },
+    async leaveIncident(entryId) {
+      const e = db.entries.find((x) => x.id === entryId)
+      need(!!e && (e.owner_id === me() || isAdmin()))
+      db.entries = db.entries.filter((x) => x.id !== entryId)
+      save()
+    },
+    async listPostsByIncident(incidentId) {
+      need(isMember())
+      return clone(
+        db.posts
+          .filter((p) => p.incident_id === incidentId)
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .map((p) => ({ ...p, author_name: nameOf(p.author_id), character: brief(p.character_id) })),
+      )
     },
 
     async listPublicCharacters() {
