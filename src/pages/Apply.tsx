@@ -39,8 +39,8 @@ export default function Apply() {
     if (!open) return
     setErr(null)
     const norm = (v: string) => v.replace(/\s+/g, '').replace(/[.。]$/, '')
-    if (norm(f.confirm) !== norm(CONFIRM_PHRASE)) return setErr(new Error('확인 문구가 다릅니다. 커뮤 공지의 확인 문구를 그대로 적어 주세요.'))
-    if (!agree) return setErr(new Error('세계관과 커뮤 규칙을 읽었다는 칸에 체크해 주세요.'))
+    if (norm(f.confirm) !== norm(CONFIRM_PHRASE)) return setErr(new Error('확인 문구가 다릅니다. 공지사항의 확인 문구를 그대로 적어 주세요.'))
+    if (!agree) return setErr(new Error('세계관과 캐릭터 가이드을 읽었다는 칸에 체크해 주세요.'))
     setBusy(true)
     try {
       const { nick, contact, ...rest } = f
@@ -103,10 +103,10 @@ export default function Apply() {
 
           {!cohorts.loading && !open && !done && (
             <Empty title="지금은 편입 신청 기간이 아닙니다">
-              모집 일정은 커뮤 공지와 알림마당에 올립니다.
+              모집 일정은 일정 문서와 알림마당에 올립니다.
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <Link to="/guide/guide-notice" className="btn">
-                  커뮤 공지
+                <Link to="/guide/guide-schedule" className="btn">
+                  일정
                 </Link>
                 <Link to="/apply/check" className="btn">
                   결과 조회
@@ -258,12 +258,12 @@ export default function Apply() {
                   <label className="form-label" htmlFor="ap-confirm">
                     확인 문구 *
                   </label>
-                  <input id="ap-confirm" className="field" value={f.confirm} onChange={set('confirm')} required maxLength={60} placeholder="커뮤 공지의 확인 문구" autoComplete="off" />
+                  <input id="ap-confirm" className="field" value={f.confirm} onChange={set('confirm')} required maxLength={60} placeholder="공지사항의 확인 문구" autoComplete="off" />
                   <p className="mt-1.5 text-[13px] text-muted-foreground">
                     <Link to="/guide/guide-notice" className="text-seal underline underline-offset-4">
-                      커뮤 공지
+                      공지사항
                     </Link>
-                    맨 아래에 있는 문장을 그대로 적어 주세요.
+                    의 확인 문구를 그대로 적어 주세요.
                   </p>
                 </div>
                 <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px]">
@@ -273,10 +273,10 @@ export default function Apply() {
                       세계관
                     </Link>
                     과{' '}
-                    <Link to="/guide/guide-rules" className="text-seal underline underline-offset-4">
-                      커뮤 규칙
+                    <Link to="/guide/guide-character" className="text-seal underline underline-offset-4">
+                      캐릭터 가이드
                     </Link>
-                    을 읽었고 지키겠습니다.
+                    를 읽었고 지키겠습니다.
                   </span>
                 </label>
                 {err ? <ErrorBox error={err} /> : null}
@@ -322,7 +322,7 @@ export default function Apply() {
             </ol>
           </div>
           <Link to="/guide/guide-apply" className="btn w-full">
-            신청 안내 전체 보기
+            신청서 양식 보기
           </Link>
         </aside>
       </section>

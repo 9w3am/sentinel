@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { TeamMark } from '../../components/TeamMark'
 import { Empty, ErrorBox, FieldRow, GradeBadge, KindBadge, Loading, Pill, SectionHead, StatusPill, Tabs, copyText, cx } from '../../components/ui'
-import { GUIDE_DOCS, guideDoc } from '../../config/guide'
+import { GUIDE_DOCS, GUIDE_SYNTAX, guideDoc } from '../../config/guide'
 import { APPLY_LABELS, APPROACHES, COHORT_STATUS, TEAM_COLORS, TEAM_ROLES, inboxCategoryLabel, kindLabel } from '../../config/world'
 import { api, useAsync } from '../../lib/backend'
 import type { Application, Case, CaseClue, CaseTarget, Cohort, CohortStatus, Incident, Team } from '../../lib/types'
@@ -1045,21 +1045,11 @@ function DocEditor({ slug }: { slug: string }) {
       </div>
       <div className="space-y-2 text-[13.5px] leading-relaxed text-muted-foreground">
         <p className="font-bold text-foreground">쓰는 법</p>
-        <p>
-          <code className="font-mono text-foreground">## 제목</code> 큰 제목 · <code className="font-mono text-foreground">### 제목</code> 작은 제목
-        </p>
-        <p>
-          <code className="font-mono text-foreground">- 내용</code> 목록 · <code className="font-mono text-foreground">1. 내용</code> 순서 목록
-        </p>
-        <p>
-          <code className="font-mono text-foreground">&gt; 내용</code> 안내 상자
-        </p>
-        <p>
-          <code className="font-mono text-foreground">:::</code> 줄로 감싸면 상태창 상자. 줄 앞에 <code className="font-mono text-foreground">[알림]</code> <code className="font-mono text-foreground">[경보]</code> <code className="font-mono text-foreground">[팀]</code>을 붙일 수 있습니다.
-        </p>
-        <p>
-          <code className="font-mono text-foreground">---</code> 장면 전환 · <code className="font-mono text-foreground">**굵게**</code> · <code className="font-mono text-foreground">[글자](#/apply)</code> 링크
-        </p>
+        {GUIDE_SYNTAX.map(([code, desc]) => (
+          <p key={code}>
+            <code className="font-mono text-foreground">{code}</code> {desc}
+          </p>
+        ))}
       </div>
     </div>
   )

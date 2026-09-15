@@ -369,3 +369,34 @@ body::after {
   border-right-width: 2px;
   border-bottom-width: 2px;
 }
+
+/* ── 커뮤 안내 본홈 */
+.font-display-en {
+  font-family: "Cinzel", "Times New Roman", serif;
+}
+.font-display-ko {
+  font-family: "Noto Serif KR", "Noto Sans KR", serif;
+}
+.guide-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 72% 18%, rgba(240, 196, 25, 0.07), transparent 60%),
+    linear-gradient(180deg, #16150f 0%, #0f0f0d 78%);
+}
+.guide-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(90deg, rgba(232, 229, 220, 0.03) 1px, transparent 1px);
+  background-size: 96px 100%;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
