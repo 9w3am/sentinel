@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { DocBody, docOutline } from '../components/DocBody'
 import { Sheet, type SheetCol } from '../components/Sheet'
 import { TeamMark } from '../components/TeamMark'
-import { Empty, GradeBadge, KindBadge, Loading, Pill, WRAP, cx } from '../components/ui'
+import { Emblem, Empty, GradeBadge, KindBadge, Loading, Pill, WRAP, cx } from '../components/ui'
 import { GUIDE_DOCS, GUIDE_SHEETS, guideDoc } from '../config/guide'
 import { TEAM_ROLES, WORLD, cohortStatusLabel } from '../config/world'
 import { api, useAsync, useAuth, usePageMeta } from '../lib/backend'
@@ -105,10 +105,32 @@ function DocView({ slug }: { slug: string }) {
 
   return (
     <article>
-      <header className="border-b-2 border-foreground pb-5">
-        <p className="font-mono text-[12px] text-muted-foreground">커뮤 안내 · {page.data ? `${fmtDate(page.data.updated_at)} 수정` : '기본 문서'}</p>
-        <h1 className="mt-2 text-[34px] font-black leading-tight tracking-[-0.04em] sm:text-[44px]">{title}</h1>
-        <p className="mt-1.5 text-[15px] text-muted-foreground">{def.summary}</p>
+      <header className="border border-rule bg-card">
+        <div className="h-1.5 bg-seal" aria-hidden="true" />
+        <div className="px-6 pb-6 pt-6 sm:px-9">
+          <p className="flex items-center gap-2.5 text-[13px] text-muted-foreground">
+            <Emblem size={22} />
+            <span className="font-bold text-foreground">{WORLD.orgName}</span>
+            <span>커뮤 안내 문서</span>
+          </p>
+          <h1 className="mt-5 text-[36px] font-black leading-tight tracking-[-0.04em] sm:text-[48px]">{title}</h1>
+          <p className="mt-2 text-[15.5px] text-muted-foreground">{def.summary}</p>
+        </div>
+        <dl className="grid grid-cols-2 border-t border-rule text-[13px] sm:grid-cols-4">
+          {(
+            [
+              ['분류', '세계관 밖'],
+              ['대상', '러너 전체'],
+              ['최종 수정', page.data ? fmtDate(page.data.updated_at) : '기본 문서'],
+              ['문서', `${idx + 1} / ${GUIDE_DOCS.length}`],
+            ] as [string, string][]
+          ).map(([k, v]) => (
+            <div key={k} className="border-b border-r border-rule px-4 py-2.5 sm:border-b-0 [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:last:border-r-0">
+              <dt className="text-muted-foreground">{k}</dt>
+              <dd className="mt-0.5 font-medium">{v}</dd>
+            </div>
+          ))}
+        </dl>
       </header>
       {outline.length > 2 && (
         <nav className="mt-5 flex flex-wrap gap-x-5 gap-y-1.5 border-b border-rule pb-4 text-[13.5px]" aria-label="이 문서 목차">

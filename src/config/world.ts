@@ -208,5 +208,9 @@ export const APPLY_LABELS: [string, string][] = [
   ['role', '희망 팀 역할'],
   ['wants', '해 보고 싶은 것'],
   ['freq', '활동 빈도'],
+  ['secret', '비밀 설정'],
+  ['qna', '캐릭터 문답'],
+  ['pair', '선관 희망'],
   ['message', '운영진에게 한마디'],
+  ['confirm', '확인 문구'],
 ]

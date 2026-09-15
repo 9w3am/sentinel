@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Emblem, Empty, ErrorBox, Loading, PageTitle, Pill, Segmented, WRAP, copyText, cx } from '../components/ui'
 import { APPLY_FREQ, APPLY_WANTS, GRADE_VALUES, KINDS, TEAM_ROLES, WORLD, cohortStatusLabel } from '../config/world'
+import { CONFIRM_PHRASE } from '../config/guide'
 import { api, useAsync, usePageMeta } from '../lib/backend'
 import type { ApplicationCheck } from '../lib/types'
 import { errMsg, fmtDate } from '../lib/util'
@@ -24,7 +25,7 @@ export default function Apply() {
   const cohorts = useAsync(() => api.listCohorts(), [])
   const open = [...(cohorts.data ?? [])].filter((c) => c.status === 'recruiting').sort((a, b) => b.no - a.no)[0]
 
-  const [f, setF] = useState({ nick: '', contact: '', name: '', kind: 'sentinel', grade: 'C', age: '', one_line: '', keywords: '', ability: '', background: '', role: '상관없음', freq: APPLY_FREQ[1], message: '' })
+  const [f, setF] = useState({ nick: '', contact: '', name: '', kind: 'sentinel', grade: 'C', age: '', one_line: '', keywords: '', ability: '', background: '', role: '상관없음', freq: APPLY_FREQ[1], message: '', secret: '', qna: '', pair: '', confirm: '' })
   const [wants, setWants] = useState<string[]>([])
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -37,6 +38,8 @@ export default function Apply() {
     e.preventDefault()
     if (!open) return
     setErr(null)
+    const norm = (v: string) => v.replace(/\s+/g, '').replace(/[.。]$/, '')
+    if (norm(f.confirm) !== norm(CONFIRM_PHRASE)) return setErr(new Error('확인 문구가 다릅니다. 커뮤 공지의 확인 문구를 그대로 적어 주세요.'))
     if (!agree) return setErr(new Error('세계관과 커뮤 규칙을 읽었다는 칸에 체크해 주세요.'))
     setBusy(true)
     try {
@@ -222,12 +225,46 @@ export default function Apply() {
                 </div>
               </Part>
 
-              <Part no="04" title="확인">
+              <Part no="04" title="비공개란 · 운영진만 봅니다">
+                <div>
+                  <label className="form-label" htmlFor="ap-secret">
+                    비밀 설정 (선택)
+                  </label>
+                  <textarea id="ap-secret" className="field min-h-20" value={f.secret} onChange={set('secret')} maxLength={3000} placeholder="러닝 중에 풀고 싶은 설정" />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="ap-qna">
+                    캐릭터 문답 (선택)
+                  </label>
+                  <textarea id="ap-qna" className="field min-h-20" value={f.qna} onChange={set('qna')} maxLength={3000} placeholder="예: 게이트 앞에서 가장 먼저 하는 일은?" />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="ap-pair">
+                    선관 희망 (선택)
+                  </label>
+                  <input id="ap-pair" className="field" value={f.pair} onChange={set('pair')} maxLength={80} placeholder="함께 합격하길 바라는 상대 오너 닉네임" />
+                  <p className="mt-1.5 text-[13px] text-muted-foreground">합격을 보장하지 않습니다. 둘 다 합격하면 가입 뒤 결속 조율로 관계를 맺어 주세요.</p>
+                </div>
+              </Part>
+
+              <Part no="05" title="확인">
                 <div>
                   <label className="form-label" htmlFor="ap-msg">
                     운영진에게 한마디
                   </label>
                   <textarea id="ap-msg" className="field min-h-20" value={f.message} onChange={set('message')} maxLength={2000} placeholder="궁금한 점, SS급 이유 등" />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="ap-confirm">
+                    확인 문구 *
+                  </label>
+                  <input id="ap-confirm" className="field" value={f.confirm} onChange={set('confirm')} required maxLength={60} placeholder="커뮤 공지의 확인 문구" autoComplete="off" />
+                  <p className="mt-1.5 text-[13px] text-muted-foreground">
+                    <Link to="/guide/guide-notice" className="text-seal underline underline-offset-4">
+                      커뮤 공지
+                    </Link>
+                    맨 아래에 있는 문장을 그대로 적어 주세요.
+                  </p>
                 </div>
                 <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px]">
                   <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--seal)]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
