@@ -197,7 +197,7 @@ export function docOutline(src: string) {
 
 /** **굵게**, *기울임*, ==형광펜==, [글자](#/주소 또는 https://…) */
 function inline(text: string): ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|==[^=]+==|\[[^\]]+\]\([^)\s]+\))/g)
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|==[^=]+==|~~[^~]+~~|\[[^\]]+\]\([^)\s]+\))/g)
   return parts.map((p, i) => {
     const bold = p.match(/^\*\*([^*]+)\*\*$/)
     if (bold)
@@ -220,6 +220,13 @@ function inline(text: string): ReactNode {
           {mark[1]}
         </mark>
       )
+    const tint = p.match(/^~~([^~]+)~~$/)
+    if (tint)
+      return (
+        <span key={i} className="font-bold" style={{ color: 'var(--doc-accent, var(--seal))' }}>
+          {tint[1]}
+        </span>
+      )
     const link = p.match(/^\[([^\]]+)\]\(([^)\s]+)\)$/)
     if (link) {
       const [, label, href] = link
@@ -239,6 +246,8 @@ function inline(text: string): ReactNode {
     return <Fragment key={i}>{p}</Fragment>
   })
 }
+
+export const DocInline = inline
 
 const lines = (ls: string[]) =>
   ls.map((l, j) => (
@@ -436,7 +445,11 @@ export function DocBody({ src, className }: { src: string; className?: string })
           case 'warning':
             return (
               <section key={i} className="relative my-10 border-y border-seal/50 bg-seal/[0.06] px-5 py-8 text-center">
-                <p className="font-display-en text-[20px] font-bold tracking-[0.16em] text-seal sm:text-[28px]">! {b.title} !</p>
+                {/[가-힣]/.test(b.title) ? (
+                  <p className="font-display-ko pl-[0.2em] text-[20px] font-black tracking-[0.2em] text-seal sm:text-[24px]">{b.title}</p>
+                ) : (
+                  <p className="font-display-en text-[20px] font-bold tracking-[0.16em] text-seal sm:text-[28px]">! {b.title} !</p>
+                )}
                 <div className="mx-auto mt-4 max-w-[38em] space-y-1.5 text-[15px] leading-[1.9] text-foreground/85">
                   {b.lines.map((l, j) => (
                     <p key={j}>{inline(l)}</p>

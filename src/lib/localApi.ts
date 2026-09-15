@@ -139,9 +139,9 @@ function seed(): DB {
     // 시연 모드 전용 번호. 실제 Supabase DB의 번호와는 무관하다.
     invites: [{ id: uid(), code: 'DEMO-ADMIN', note: '시연용 운영자 계정', grant_admin: true, used_by: null, used_at: null, created_at: now(), created_by: null }],
     characters: [
-      mk('c-test1', { name: '테스트1', kind: 'sentinel', grade: 'S', affiliation: '본부 · 대응국', team_id: 't-1', team_role: '선봉' }, 300),
-      mk('c-test2', { name: '테스트2', kind: 'guide', grade: 'A', affiliation: '본부 · 가이딩센터', team_id: 't-1', team_role: '앵커' }, 280),
-      mk('c-test3', { name: '테스트3', kind: 'sentinel', grade: 'B', affiliation: '제1지부', team_id: 't-2', team_role: '선봉' }, 100),
+      mk('c-test1', { name: '테스트1', kind: 'sentinel', grade: 'S', affiliation: '본부 · 대응국', team_id: 't-1', team_role: '전투' }, 300),
+      mk('c-test2', { name: '테스트2', kind: 'guide', grade: 'A', affiliation: '본부 · 가이딩센터', team_id: 't-1', team_role: '가이딩' }, 280),
+      mk('c-test3', { name: '테스트3', kind: 'sentinel', grade: 'B', affiliation: '제1지부', team_id: 't-2', team_role: '전투' }, 100),
     ],
     secrets: {},
     relations: [

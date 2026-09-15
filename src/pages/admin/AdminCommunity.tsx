@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { TeamMark } from '../../components/TeamMark'
 import { Empty, ErrorBox, FieldRow, GradeBadge, KindBadge, Loading, Pill, SectionHead, StatusPill, Tabs, copyText, cx } from '../../components/ui'
+import { ProfileDocView, parseProfileDoc } from '../../components/ProfileDoc'
 import { GUIDE_DOCS, GUIDE_SYNTAX, guideDoc } from '../../config/guide'
 import { APPLY_LABELS, APPROACHES, COHORT_STATUS, TEAM_COLORS, TEAM_ROLES, inboxCategoryLabel, kindLabel } from '../../config/world'
 import { api, useAsync } from '../../lib/backend'
@@ -91,6 +92,15 @@ export function Applications() {
                           <span className="whitespace-pre-wrap">{answer(a, k)}</span>
                         </FieldRow>
                       ))}
+                      {(() => {
+                        const pd = parseProfileDoc(a.answers?.doc)
+                        return pd ? (
+                          <div className="border-t border-rule p-3">
+                            <p className="mb-2 text-[13px] font-bold">프로필 문서</p>
+                            <ProfileDocView doc={pd} />
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                     <div className="space-y-3">
                       <label htmlFor={`an-${a.id}`} className="form-label">

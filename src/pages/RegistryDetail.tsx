@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { parseProfileDoc } from '../components/ProfileDoc'
 import { TeamLabel } from '../components/TeamMark'
 import { saveElementAsPng } from '../lib/exportImage'
 import { Avatar, Emblem, Empty, ErrorBox, FieldRow, GradeBadge, Icon, KindBadge, Loading, Pill, SectionHead, StatusPill, WRAP, cx } from '../components/ui'
@@ -169,6 +170,17 @@ export default function RegistryDetail() {
       </article>
 
       <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-end gap-3">
+        {parseProfileDoc(d.profile_doc) ? (
+          <Link to={`/registry/${c.id}/profile`} className="btn btn-sm btn-primary mr-auto">
+            프로필 문서 열기
+          </Link>
+        ) : (
+          canManage && (
+            <Link to={`/office/cards/${c.id}/edit`} className="btn btn-sm mr-auto">
+              프로필 문서 꾸미기
+            </Link>
+          )
+        )}
         {saveErr ? <span className="text-[13px] text-destructive">이미지를 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.</span> : null}
         <button
           type="button"

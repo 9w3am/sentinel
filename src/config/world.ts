@@ -129,9 +129,9 @@ export const DEFAULT_RULES = {
 // ── 팀
 export const TEAM_ROLES = [
   { value: '팀장', desc: '팀을 이끈다' },
-  { value: '선봉', desc: '앞에서 싸우는 센티넬' },
-  { value: '앵커', desc: '팀을 붙잡아 두는 가이드' },
-  { value: '관측', desc: '탐지 · 정찰' },
+  { value: '전투', desc: '앞에서 싸우는 센티넬' },
+  { value: '탐색', desc: '감각으로 게이트 안을 살피는 센티넬' },
+  { value: '가이딩', desc: '팀원 폭주를 막는 가이드' },
   { value: '지원', desc: '오퍼레이터 · 의무 · 기술' },
 ] as const
 

@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { ProfileDocEditor, PROFILE_DOC_BYTES, docBytes, emptyDoc, isEmptyDoc, type ProfileDoc } from '../components/ProfileDoc'
 import { Emblem, Empty, ErrorBox, Loading, PageTitle, Pill, Segmented, WRAP, copyText, cx } from '../components/ui'
 import { APPLY_FREQ, APPLY_WANTS, GRADE_VALUES, KINDS, TEAM_ROLES, WORLD, cohortStatusLabel } from '../config/world'
 import { CONFIRM_PHRASE } from '../config/guide'
@@ -7,15 +8,16 @@ import { api, useAsync, usePageMeta } from '../lib/backend'
 import type { ApplicationCheck } from '../lib/types'
 import { errMsg, fmtDate } from '../lib/util'
 
-function Part({ no, title, children }: { no: string; title: string; children: ReactNode }) {
+function Part({ no, title, desc, children }: { no: string; title: string; desc?: string; children: ReactNode }) {
   return (
     <fieldset className="border-t border-rule px-6 py-7 sm:px-8">
       <legend className="sr-only">{title}</legend>
-      <p className="mb-5 flex items-baseline gap-3">
+      <p className="flex items-baseline gap-3">
         <span className="font-mono text-[13px] text-seal">{no}</span>
         <span className="text-[19px] font-black tracking-[-0.02em]">{title}</span>
       </p>
-      <div className="space-y-5">{children}</div>
+      {desc && <p className="mt-1 text-[13.5px] text-muted-foreground">{desc}</p>}
+      <div className="mt-5 space-y-5">{children}</div>
     </fieldset>
   )
 }
@@ -27,6 +29,8 @@ export default function Apply() {
 
   const [f, setF] = useState({ nick: '', contact: '', name: '', kind: 'sentinel', grade: 'C', age: '', one_line: '', keywords: '', ability: '', background: '', role: '상관없음', freq: APPLY_FREQ[1], message: '', secret: '', qna: '', pair: '', confirm: '' })
   const [wants, setWants] = useState<string[]>([])
+  const [doc, setDoc] = useState<ProfileDoc>(emptyDoc)
+  const [docOpen, setDocOpen] = useState(false)
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<unknown>(null)
@@ -39,12 +43,14 @@ export default function Apply() {
     if (!open) return
     setErr(null)
     const norm = (v: string) => v.replace(/\s+/g, '').replace(/[.。]$/, '')
-    if (norm(f.confirm) !== norm(CONFIRM_PHRASE)) return setErr(new Error('확인 문구가 다릅니다. 공지사항의 확인 문구를 그대로 적어 주세요.'))
-    if (!agree) return setErr(new Error('세계관과 캐릭터 가이드을 읽었다는 칸에 체크해 주세요.'))
+    if (norm(f.confirm) !== norm(CONFIRM_PHRASE)) return setErr(new Error('확인 문구가 다릅니다. 공지사항 맨 아래 문장을 그대로 적어 주세요.'))
+    if (!agree) return setErr(new Error('문서를 읽었다는 칸에 체크해 주세요.'))
+    const withDoc = !isEmptyDoc(doc)
+    if (withDoc && docBytes(doc) > PROFILE_DOC_BYTES) return setErr(new Error('프로필 문서가 너무 깁니다. 칸이나 글을 줄여 주세요.'))
     setBusy(true)
     try {
       const { nick, contact, ...rest } = f
-      const r = await api.submitApplication({ owner_nick: nick, contact, answers: { ...rest, wants } })
+      const r = await api.submitApplication({ owner_nick: nick, contact, answers: { ...rest, wants, ...(withDoc ? { doc: JSON.stringify(doc) } : {}) } })
       setDone({ ...r, cohort: open.no })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e) {
@@ -63,7 +69,7 @@ export default function Apply() {
 
   return (
     <>
-      <PageTitle title="편입 신청서" crumbs={[{ label: '커뮤 안내', to: '/guide' }, { label: '편입 신청서' }]} desc="계정이 없어도 신청할 수 있습니다. 합격하면 결과 조회에서 편입 인가 번호를 받습니다.">
+      <PageTitle title="편입 신청서" crumbs={[{ label: '커뮤 안내', to: '/guide' }, { label: '편입 신청서' }]} desc="계정 없이 낼 수 있습니다. 합격하면 결과 조회에서 편입 인가 번호가 나옵니다.">
         <Link to="/apply/check" className="btn">
           결과 조회 →
         </Link>
@@ -76,8 +82,8 @@ export default function Apply() {
 
           {done && (
             <div className="border-2 border-seal bg-card p-6 sm:p-8" role="status">
-              <p className="text-[13px] text-muted-foreground">접수 완료 · 제{done.cohort}기 편입</p>
-              <h2 className="mt-1 text-[28px] font-black tracking-[-0.03em]">신청서를 받았습니다</h2>
+              <p className="text-[13px] text-muted-foreground">제{done.cohort}기 편입 · 접수 완료</p>
+              <h2 className="mt-1 text-[28px] font-black tracking-[-0.03em]">신청서가 접수됐습니다</h2>
               <dl className="mt-6 grid gap-4 sm:grid-cols-2">
                 {[
                   ['접수번호', done.receipt],
@@ -89,7 +95,7 @@ export default function Apply() {
                   </div>
                 ))}
               </dl>
-              <p className="mt-5 border-l-4 border-destructive pl-3 text-[14.5px]">이 화면을 닫으면 확인 코드를 다시 볼 수 없습니다. 지금 저장해 두세요.</p>
+              <p className="mt-5 border-l-4 border-destructive pl-3 text-[14.5px]">창을 닫으면 확인 코드는 다시 볼 수 없습니다. 지금 저장해 두세요.</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <button type="button" className="btn btn-primary" onClick={copyBoth}>
                   {copied ? '복사했습니다' : '둘 다 복사'}
@@ -102,11 +108,11 @@ export default function Apply() {
           )}
 
           {!cohorts.loading && !open && !done && (
-            <Empty title="지금은 편입 신청 기간이 아닙니다">
-              모집 일정은 일정 문서와 알림마당에 올립니다.
+            <Empty title="지금은 모집 기간이 아닙니다">
+              모집 공지는 알림마당과 커뮤 안내 첫 화면에 올라옵니다.
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <Link to="/guide/guide-schedule" className="btn">
-                  일정
+                <Link to="/guide" className="btn">
+                  커뮤 안내
                 </Link>
                 <Link to="/apply/check" className="btn">
                   결과 조회
@@ -133,19 +139,19 @@ export default function Apply() {
                 </dl>
               </div>
 
-              <Part no="01" title="신청인">
+              <Part no="01" title="오너" desc="운영진만 봅니다.">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label className="form-label" htmlFor="ap-nick">
-                      오너 닉네임 *
+                      닉네임 *
                     </label>
                     <input id="ap-nick" className="field" value={f.nick} onChange={set('nick')} required maxLength={40} />
                   </div>
                   <div>
                     <label className="form-label" htmlFor="ap-contact">
-                      연락 수단 (선택)
+                      연락 수단
                     </label>
-                    <input id="ap-contact" className="field" value={f.contact} onChange={set('contact')} maxLength={120} placeholder="운영진만 봅니다" />
+                    <input id="ap-contact" className="field" value={f.contact} onChange={set('contact')} maxLength={120} placeholder="비워도 됩니다" />
                   </div>
                 </div>
               </Part>
@@ -167,12 +173,12 @@ export default function Apply() {
                 </div>
                 <div>
                   <span className="form-label">구분 *</span>
-                  <Segmented name="구분" value={f.kind} onChange={(v) => setF({ ...f, kind: v })} options={KINDS.map((k) => ({ value: k.value as string, label: k.label }))} />
+                  <Segmented name="구분" value={f.kind} onChange={(v) => setF({ ...f, kind: v })} options={KINDS.filter((k) => k.value !== 'undetermined').map((k) => ({ value: k.value as string, label: k.label }))} />
                 </div>
                 <div>
                   <span className="form-label">희망 등급</span>
                   <Segmented name="희망 등급" value={f.grade} onChange={(v) => setF({ ...f, grade: v })} options={GRADE_VALUES.map((g) => ({ value: g, label: g }))} />
-                  {f.grade === 'SS' && <p className="mt-1.5 text-[13px] text-warn">SS급은 아래 '운영진에게 한마디'에 이유를 적어 주세요.</p>}
+                  {(f.grade === 'SS' || f.grade === 'S') && <p className="mt-1.5 text-[13px] text-warn">S급 이상은 맨 아래 '운영진에게 한마디'에 이유를 적어 주세요.</p>}
                 </div>
                 <div>
                   <label className="form-label" htmlFor="ap-line">
@@ -188,9 +194,9 @@ export default function Apply() {
                 </div>
                 <div>
                   <label className="form-label" htmlFor="ap-ability">
-                    능력 · 감각
+                    능력
                   </label>
-                  <textarea id="ap-ability" className="field min-h-24" value={f.ability} onChange={set('ability')} maxLength={2000} />
+                  <textarea id="ap-ability" className="field min-h-24" value={f.ability} onChange={set('ability')} maxLength={2000} placeholder="할 수 있는 것, 쓰고 나면 오는 부담" />
                 </div>
                 <div>
                   <label className="form-label" htmlFor="ap-bg">
@@ -200,13 +206,26 @@ export default function Apply() {
                 </div>
               </Part>
 
-              <Part no="03" title="희망 사항">
+              <Part no="03" title="프로필 문서 (선택)" desc="직접 꾸민 캐릭터 문서를 같이 낼 수 있습니다. 운영진이 신청서와 함께 봅니다.">
+                {docOpen ? (
+                  <>
+                    <ProfileDocEditor value={doc} onChange={setDoc} name={f.name} />
+                    <p className="border-l-2 border-seal pl-3 text-[13.5px] text-muted-foreground">합격 뒤 등록증에 옮기려면 '코드 복사'로 코드를 따로 저장해 두세요.</p>
+                  </>
+                ) : (
+                  <button type="button" className="btn" onClick={() => setDocOpen(true)}>
+                    프로필 문서 꾸미기
+                  </button>
+                )}
+              </Part>
+
+              <Part no="04" title="희망 사항" desc="팀 배치에 참고합니다.">
                 <div>
                   <span className="form-label">희망 팀 역할</span>
                   <Segmented name="희망 팀 역할" value={f.role} onChange={(v) => setF({ ...f, role: v })} options={[...TEAM_ROLES.filter((r) => r.value !== '팀장').map((r) => ({ value: r.value as string, label: r.value })), { value: '상관없음', label: '상관없음' }]} />
                 </div>
                 <div>
-                  <span className="form-label">커뮤에서 해 보고 싶은 것 (여러 개)</span>
+                  <span className="form-label">해 보고 싶은 것 (여러 개)</span>
                   <div className="flex flex-wrap gap-1.5">
                     {APPLY_WANTS.map((w) => {
                       const on = wants.includes(w)
@@ -221,68 +240,69 @@ export default function Apply() {
                 <div>
                   <span className="form-label">활동 빈도</span>
                   <Segmented name="활동 빈도" value={f.freq} onChange={(v) => setF({ ...f, freq: v })} options={APPLY_FREQ.map((x) => ({ value: x, label: x }))} />
-                  <p className="mt-1.5 text-[13px] text-muted-foreground">참고용입니다. 활동량에 따른 불이익은 없습니다.</p>
+                  <p className="mt-1.5 text-[13px] text-muted-foreground">참고만 합니다. 적게 들어와도 불이익은 없습니다.</p>
                 </div>
               </Part>
 
-              <Part no="04" title="비공개란 · 운영진만 봅니다">
+              <Part no="05" title="비공개란" desc="운영진만 봅니다.">
                 <div>
                   <label className="form-label" htmlFor="ap-secret">
-                    비밀 설정 (선택)
+                    비밀 설정
                   </label>
                   <textarea id="ap-secret" className="field min-h-20" value={f.secret} onChange={set('secret')} maxLength={3000} placeholder="러닝 중에 풀고 싶은 설정" />
                 </div>
                 <div>
                   <label className="form-label" htmlFor="ap-qna">
-                    캐릭터 문답 (선택)
+                    캐릭터 문답
                   </label>
-                  <textarea id="ap-qna" className="field min-h-20" value={f.qna} onChange={set('qna')} maxLength={3000} placeholder="예: 게이트 앞에서 가장 먼저 하는 일은?" />
+                  <textarea id="ap-qna" className="field min-h-20" value={f.qna} onChange={set('qna')} maxLength={3000} placeholder="Q. 게이트 앞에서 제일 먼저 하는 일은?" />
                 </div>
                 <div>
                   <label className="form-label" htmlFor="ap-pair">
-                    선관 희망 (선택)
+                    선관 희망
                   </label>
-                  <input id="ap-pair" className="field" value={f.pair} onChange={set('pair')} maxLength={80} placeholder="함께 합격하길 바라는 상대 오너 닉네임" />
-                  <p className="mt-1.5 text-[13px] text-muted-foreground">합격을 보장하지 않습니다. 둘 다 합격하면 가입 뒤 결속 조율로 관계를 맺어 주세요.</p>
+                  <input id="ap-pair" className="field" value={f.pair} onChange={set('pair')} maxLength={80} placeholder="같이 붙고 싶은 오너 닉네임" />
+                  <p className="mt-1.5 text-[13px] text-muted-foreground">합격을 보장하지 않습니다. 둘 다 붙으면 가입 뒤 결속 조율로 이어 주세요.</p>
                 </div>
               </Part>
 
-              <Part no="05" title="확인">
+              <Part no="06" title="확인">
                 <div>
                   <label className="form-label" htmlFor="ap-msg">
                     운영진에게 한마디
                   </label>
-                  <textarea id="ap-msg" className="field min-h-20" value={f.message} onChange={set('message')} maxLength={2000} placeholder="궁금한 점, SS급 이유 등" />
+                  <textarea id="ap-msg" className="field min-h-20" value={f.message} onChange={set('message')} maxLength={2000} placeholder="궁금한 점, S급 이유 등" />
                 </div>
                 <div>
                   <label className="form-label" htmlFor="ap-confirm">
                     확인 문구 *
                   </label>
-                  <input id="ap-confirm" className="field" value={f.confirm} onChange={set('confirm')} required maxLength={60} placeholder="공지사항의 확인 문구" autoComplete="off" />
+                  <input id="ap-confirm" className="field" value={f.confirm} onChange={set('confirm')} required maxLength={60} autoComplete="off" />
                   <p className="mt-1.5 text-[13px] text-muted-foreground">
                     <Link to="/guide/guide-notice" className="text-seal underline underline-offset-4">
                       공지사항
-                    </Link>
-                    의 확인 문구를 그대로 적어 주세요.
+                    </Link>{' '}
+                    맨 아래 문장을 적어 주세요.
                   </p>
                 </div>
                 <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px]">
                   <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--seal)]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
                   <span>
+                    공지사항 ·{' '}
                     <Link to="/guide/guide-world" className="text-seal underline underline-offset-4">
                       세계관
-                    </Link>
-                    과{' '}
+                    </Link>{' '}
+                    ·{' '}
                     <Link to="/guide/guide-character" className="text-seal underline underline-offset-4">
                       캐릭터 가이드
                     </Link>
-                    를 읽었고 지키겠습니다.
+                    를 다 읽었습니다.
                   </span>
                 </label>
                 {err ? <ErrorBox error={err} /> : null}
                 <div className="flex justify-end border-t border-rule pt-5">
                   <button type="submit" className="btn btn-primary px-8" disabled={busy}>
-                    {busy ? '제출 중…' : '신청서 제출'}
+                    {busy ? '보내는 중…' : '신청서 제출'}
                   </button>
                 </div>
               </Part>
@@ -313,7 +333,7 @@ export default function Apply() {
           <div className="border-t-2 border-foreground pt-3">
             <p className="text-[13px] text-muted-foreground">순서</p>
             <ol className="mt-2 space-y-1.5 text-[14px]">
-              {['신청서 제출', '접수번호 · 확인 코드 저장', '합격 발표 확인', '결과 조회에서 인가 번호 받기', '가입 · 등록증 작성', '심사 뒤 팀 배치'].map((s, i) => (
+              {['신청서 제출', '접수번호 · 확인 코드 저장', '합격 발표 확인', '인가 번호 받기', '가입 · 등록증 작성', '팀 배치'].map((s, i) => (
                 <li key={s} className="grid grid-cols-[1.8rem_1fr]">
                   <span className="font-mono text-[13px] text-seal">{String(i + 1).padStart(2, '0')}</span>
                   {s}
@@ -377,7 +397,7 @@ export function ApplyCheck() {
         </form>
 
         <div className="min-w-0">
-          {res === null && <ErrorBox error={new Error('접수번호나 확인 코드가 맞지 않습니다. 대소문자는 가리지 않습니다.')} />}
+          {res === null && <ErrorBox error={new Error('접수번호나 확인 코드가 맞지 않습니다. 대소문자는 상관없습니다.')} />}
           {res && (
             <div className="border border-rule bg-card p-6 sm:p-8" role="status">
               <p className="text-[13px] text-muted-foreground">
@@ -385,13 +405,13 @@ export function ApplyCheck() {
               </p>
               {res.status === 'submitted' && (
                 <>
-                  <h2 className="mt-1 text-[26px] font-black">심사 중입니다</h2>
-                  <p className="mt-2 text-[15px] text-muted-foreground">합격 발표 공고가 올라온 뒤 다시 확인해 주세요.</p>
+                  <h2 className="mt-1 text-[26px] font-black">아직 보는 중입니다</h2>
+                  <p className="mt-2 text-[15px] text-muted-foreground">합격 발표 공지가 올라온 뒤에 다시 확인해 주세요.</p>
                 </>
               )}
               {res.status === 'rejected' && (
                 <>
-                  <h2 className="mt-1 text-[26px] font-black">이번 기수에는 함께하지 못하게 되었습니다</h2>
+                  <h2 className="mt-1 text-[26px] font-black">이번 기수에는 함께하지 못하게 됐습니다</h2>
                   {res.result_note && <p className="mt-3 border-l-2 border-rule pl-3 text-[15px]">{res.result_note}</p>}
                   <p className="mt-3 text-[14px] text-muted-foreground">다음 기수 모집에 다시 신청할 수 있습니다.</p>
                 </>

@@ -17,6 +17,7 @@ const NoticeList = lazy(() => import('./pages/Notices').then((m) => ({ default: 
 const NoticeDetail = lazy(() => import('./pages/Notices').then((m) => ({ default: m.NoticeDetail })))
 const Registry = lazy(() => import('./pages/Registry'))
 const RegistryDetail = lazy(() => import('./pages/RegistryDetail'))
+const Profile = lazy(() => import('./pages/Profile'))
 const RegistryMap = lazy(() => import('./pages/RegistryMap'))
 const Rules = lazy(() => import('./pages/Rules'))
 const System = lazy(() => import('./pages/System'))
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="incidents/:id" element={<IncidentDetail />} />
             <Route path="registry" element={<Registry />} />
             <Route path="registry/map" element={<RegistryMap />} />
+            <Route path="registry/:id/profile" element={<Profile />} />
             <Route path="registry/:id" element={<RegistryDetail />} />
             <Route path="teams" element={<TeamList />} />
             <Route path="teams/:id" element={<TeamDetail />} />

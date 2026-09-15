@@ -109,7 +109,7 @@ function SectionHead({ en, ko }: { en: string; ko: string }) {
   )
 }
 
-function CohortBoard({ onSchedule = false }: { onSchedule?: boolean }) {
+function CohortBoard() {
   const cohorts = useAsync(() => api.listCohorts(), [])
   if (cohorts.loading) return <p className="border-t border-rule py-4 text-[14px] text-muted-foreground">불러오는 중…</p>
   const list = [...(cohorts.data ?? [])].sort((a, b) => b.no - a.no)
@@ -131,11 +131,9 @@ function CohortBoard({ onSchedule = false }: { onSchedule?: boolean }) {
         ))}
       </ul>
       <div className="mt-4 flex flex-wrap gap-2">
-        {!onSchedule && (
-          <Link to="/guide/guide-schedule" className="btn btn-sm">
-          일정 보기
+        <Link to="/guide/guide-apply" className="btn btn-sm">
+          신청서 양식
         </Link>
-        )}
         <Link to={open ? '/apply' : '/apply/check'} className={cx('btn btn-sm', open && 'btn-primary')}>
           {open ? '편입 신청서' : '결과 조회'}
         </Link>
@@ -257,13 +255,6 @@ function DocView({ slug }: { slug: string }) {
             </button>
           ))}
         </nav>
-      )}
-
-      {slug === 'guide-schedule' && (
-        <div className="mx-auto mt-14 max-w-[520px]">
-          <SectionHead en="RECRUIT" ko="모집 현황" />
-          <CohortBoard onSchedule />
-        </div>
       )}
 
       <DocBody src={body} className="mt-6" />

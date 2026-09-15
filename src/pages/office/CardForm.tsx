@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CharacterCard } from '../../components/CharacterCard'
+import { ProfileDocEditor, PROFILE_DOC_BYTES, docBytes, emptyDoc, isEmptyDoc, parseProfileDoc, type ProfileDoc } from '../../components/ProfileDoc'
 import { ErrorBox, Loading, Segmented } from '../../components/ui'
 import { BRANCHES, DETAIL_FIELDS, GRADES, GUIDING_TYPES, KINDS, type Kind } from '../../config/world'
 import { api, useAuth, usePageMeta } from '../../lib/backend'
@@ -16,6 +17,8 @@ export default function CardForm() {
   const { session } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState<CharacterInput>(empty)
+  const [doc, setDoc] = useState<ProfileDoc>(emptyDoc)
+  const [docOpen, setDocOpen] = useState(false)
   const [secret, setSecret] = useState('')
   const [loading, setLoading] = useState(editing)
   const [busy, setBusy] = useState(false)
@@ -33,7 +36,10 @@ export default function CardForm() {
         if (!c || (c.owner_id !== session?.userId && session?.role !== 'admin')) {
           setErr(new Error('수정 권한이 없는 등록증입니다.'))
         } else {
-          setForm({ id: c.id, name: c.name, codename: c.codename ?? '', kind: c.kind, grade: c.grade, affiliation: c.affiliation ?? '', details: c.details ?? {}, is_public: c.is_public, avatar_url: c.avatar_url })
+          const { profile_doc, ...details } = c.details ?? {}
+          setForm({ id: c.id, name: c.name, codename: c.codename ?? '', kind: c.kind, grade: c.grade, affiliation: c.affiliation ?? '', details, is_public: c.is_public, avatar_url: c.avatar_url })
+          const pd = parseProfileDoc(profile_doc)
+          if (pd) setDoc(pd)
           setSecret(s ?? '')
           setStatus(c.status)
         }
@@ -66,9 +72,12 @@ export default function CardForm() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setErr(null)
+    const withDoc = !isEmptyDoc(doc)
+    if (withDoc && docBytes(doc) > PROFILE_DOC_BYTES) return setErr(new Error('프로필 문서가 너무 깁니다. 칸이나 글을 줄여 주세요.'))
     setBusy(true)
     try {
-      const details = Object.fromEntries(Object.entries(form.details).filter(([, v]) => v && v.trim()))
+      const details: Record<string, string> = Object.fromEntries(Object.entries(form.details).filter(([k, v]) => k !== 'profile_doc' && v && v.trim()))
+      if (withDoc) details.profile_doc = JSON.stringify(doc)
       const savedId = await api.saveCharacter({ ...form, details })
       if (secret.trim() || editing) await api.saveSecret(savedId, secret)
       navigate('/office/cards', {
@@ -187,7 +196,18 @@ export default function CardForm() {
             </div>
           </Chapter>
 
-          <Chapter no="05" title="비공개 설정">
+          <Chapter no="05" title="프로필 문서">
+            <p className="-mt-2 text-[13.5px] text-muted-foreground">명부의 등록 기록에서 '프로필 문서'로 열리는 꾸밈 문서입니다. 선택입니다. 신청서에서 복사해 둔 코드가 있으면 '코드 불러오기'에 붙여 넣으세요.</p>
+            {docOpen || !isEmptyDoc(doc) ? (
+              <ProfileDocEditor value={doc} onChange={setDoc} name={form.name} stacked />
+            ) : (
+              <button type="button" className="btn" onClick={() => setDocOpen(true)}>
+                프로필 문서 꾸미기
+              </button>
+            )}
+          </Chapter>
+
+          <Chapter no="06" title="비공개 설정">
             <p className="-mt-2 mb-3 text-[13.5px] text-muted-foreground">본인과 관리부만 볼 수 있고, 명부에는 나오지 않습니다.</p>
             <textarea className="field min-h-32 border-dashed" value={secret} onChange={(e) => setSecret(e.target.value)} maxLength={6000} placeholder="비공개 설정, 숨겨진 이력 등" />
           </Chapter>
@@ -200,7 +220,7 @@ export default function CardForm() {
                 <span className="block text-[13px] text-muted-foreground">끄면 심사가 끝나도 본인과 관리부만 볼 수 있습니다.</span>
               </span>
             </label>
-            {editing && status === 'approved' && <p className="border-l-2 border-warn pl-3 text-[13px] text-muted-foreground">공개 여부 말고 다른 내용을 고치면 다시 심사 중 상태가 됩니다.</p>}
+            {editing && status === 'approved' && <p className="border-l-2 border-warn pl-3 text-[13px] text-muted-foreground">공개 여부 말고 다른 내용을 고치면(프로필 문서 포함) 다시 심사 중 상태가 됩니다.</p>}
             {err ? <ErrorBox error={err} /> : null}
             <div className="flex flex-wrap gap-2">
               <button type="submit" className="btn btn-primary px-6 py-2.5" disabled={busy || uploading}>
