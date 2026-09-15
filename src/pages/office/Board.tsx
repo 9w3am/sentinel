@@ -16,7 +16,7 @@ const docNo = (p: Post) => {
 }
 
 export function BoardList() {
-  usePageMeta('협회 게시판')
+  usePageMeta('내부 게시판')
   const [params, setParams] = useSearchParams()
   const cat = params.get('c') ?? ''
   const all = useAsync(() => api.listPosts(), [])
@@ -27,7 +27,7 @@ export function BoardList() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b-2 border-foreground pb-3">
         <div>
           <p className="text-[13px] text-muted-foreground">요원 전용</p>
-          <h2 className="text-[30px] font-black tracking-[-0.03em]">협회 게시판</h2>
+          <h2 className="text-[30px] font-black tracking-[-0.03em]">내부 게시판</h2>
         </div>
         <Link to={`/office/board/new${cat ? `?c=${cat}` : ''}`} className="btn btn-primary">
           기안 작성

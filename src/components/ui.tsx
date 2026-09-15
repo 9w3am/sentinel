@@ -24,7 +24,7 @@ export const alertColor = (lv: number) => ['#8d8a80', '#f0c419', '#e8892a', '#d8
 export const kindColor = (k: string) =>
   k === 'sentinel' ? 'var(--kind-s)' : k === 'guide' ? 'var(--kind-g)' : k === 'undetermined' ? 'var(--kind-u)' : 'var(--muted-foreground)'
 
-// ── 협회 마크 (노란 사각형 + 눈)
+// ── 파수국 마크 (노란 사각형 + 눈)
 export function Emblem({ size = 36, className, style }: { size?: number; ring?: boolean; className?: string; style?: CSSProperties }) {
   return (
     <svg viewBox="0 0 40 40" width={size} height={size} className={className} style={style} aria-hidden="true">
@@ -119,14 +119,44 @@ export function GradeBadge({ grade, size = 'md' }: { grade: string; size?: 'sm' 
   )
 }
 
-export function KindMark({ kind, size = 9 }: { kind: string; size?: number }) {
+/** 구분 마크 — 센티넬: 터져 나가는 감각(파열) / 가이드: 흩어진 것을 묶는 고리(봉합) */
+export function KindMark({ kind, size = 12 }: { kind: string; size?: number }) {
   const c = kindColor(kind)
   return (
-    <svg width={size} height={size} viewBox="0 0 10 10" aria-hidden="true" className="shrink-0">
-      {kind === 'sentinel' && <path d="M5 0.5 L9.5 9.5 H0.5 Z" fill={c} />}
-      {kind === 'guide' && <circle cx="5" cy="5" r="4.5" fill={c} />}
-      {kind === 'normal' && <rect x="1" y="1" width="8" height="8" fill="none" stroke={c} strokeWidth="1.6" />}
-      {kind === 'undetermined' && <circle cx="5" cy="5" r="4" fill="none" stroke={c} strokeWidth="1.6" strokeDasharray="2 1.6" />}
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
+      {kind === 'sentinel' && (
+        <g fill={c}>
+          <polygon points="24,0 29,15 24,11 19,15" />
+          <polygon points="24,48 19,33 24,37 29,33" />
+          <polygon points="0,24 15,19 11,24 15,29" />
+          <polygon points="48,24 33,29 37,24 33,19" />
+          <polygon points="24,16 32,24 24,32 16,24" />
+          {size >= 20 && (
+            <>
+              <polygon points="33,15 41,7 36,17" />
+              <polygon points="15,33 7,41 12,31" />
+            </>
+          )}
+        </g>
+      )}
+      {kind === 'guide' && (
+        <>
+          <circle cx="24" cy="24" r="16" fill="none" stroke={c} strokeWidth={size >= 20 ? 3.2 : 5} />
+          <g fill={c}>
+            {size >= 20 && (
+              <>
+                <polygon points="20,4 28,4 24,14" />
+                <polygon points="20,44 28,44 24,34" />
+                <polygon points="4,20 4,28 14,24" />
+                <polygon points="44,20 44,28 34,24" />
+              </>
+            )}
+            <polygon points={size >= 20 ? '24,19 29,24 24,29 19,24' : '24,16 32,24 24,32 16,24'} />
+          </g>
+        </>
+      )}
+      {kind === 'normal' && <rect x="8" y="8" width="32" height="32" fill="none" stroke={c} strokeWidth="6" />}
+      {kind === 'undetermined' && <circle cx="24" cy="24" r="17" fill="none" stroke={c} strokeWidth="6" strokeDasharray="9 6" />}
     </svg>
   )
 }

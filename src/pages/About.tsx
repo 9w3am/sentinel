@@ -20,22 +20,22 @@ const DEPTS: [string, string][] = [
 ]
 
 export default function About() {
-  usePageMeta('협회 소개', `${WORLD.orgName} 소개.`)
+  usePageMeta('파수국 소개', `${WORLD.orgName} 소개.`)
   return (
     <>
-      <PageTitle title="협회 소개" crumbs={[{ label: '협회 소개' }]} desc="각성자를 등록하고, 게이트에 대응하고, 결속을 관리합니다." />
+      <PageTitle title="파수국 소개" crumbs={[{ label: '파수국 소개' }]} desc="각성자를 등록하고, 게이트에 대응하고, 결속을 관리합니다." />
 
       <section className={cx(WRAP, 'grid gap-12 pt-12 lg:grid-cols-[1.2fr_1fr]')}>
         <div className="corners px-6 py-7 sm:px-8">
-          <h2 className="text-[22px] font-black tracking-[-0.03em]">협회장 인사말</h2>
+          <h2 className="text-[22px] font-black tracking-[-0.03em]">국장 인사말</h2>
           <div className="mt-5 space-y-3 text-[17px] leading-[1.85]">
             <p>감각이 남들보다 멀리 닿는 것은 축복이기 전에 고통이었습니다.</p>
-            <p className="text-muted-foreground">협회는 그 고통을 누구도 혼자 견디지 않게 하려고 있습니다. 오늘도 게이트 앞에 선 모든 요원에게 감사드립니다.</p>
+            <p className="text-muted-foreground">파수국은 그 고통을 누구도 혼자 견디지 않게 하려고 있습니다. 오늘도 게이트 앞에 선 모든 요원에게 감사드립니다.</p>
           </div>
           <div className="mt-10 flex items-end justify-end gap-4">
-            <span className="text-[17px] font-bold">{WORLD.orgName} 협회장</span>
+            <span className="text-[17px] font-bold">파수국장</span>
             <span className="stamp text-[18px] text-seal">
-              협 회 장<small>직인</small>
+              국 장<small>직인</small>
             </span>
           </div>
         </div>

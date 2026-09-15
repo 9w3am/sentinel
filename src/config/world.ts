@@ -4,10 +4,10 @@
 // ─────────────────────────────────────────────
 
 export const WORLD = {
-  orgName: '센티넬 협회',
-  orgNameEn: 'SENTINEL ASSOCIATION',
-  orgShort: 'SA',
-  docPrefix: '협회',
+  orgName: '파수국',
+  orgNameEn: 'EDEN WATCH BUREAU',
+  orgShort: 'WB',
+  docPrefix: '파수국',
   founded: 2009,
 }
 
@@ -111,7 +111,7 @@ export const DEFAULT_RULES = {
 요원은 등록증을 신청하고 관리부 심사를 거쳐 요원 명부에 오른다.
 
 제4조 (게시판)
-협회 게시판의 기안은 등록증 명의 또는 개인 명의로 작성한다. 다른 요원을 비방하거나 분쟁을 부추기는 기안은 삭제한다.
+게시판의 기안은 등록증 명의 또는 개인 명의로 작성한다. 다른 요원을 비방하거나 분쟁을 부추기는 기안은 삭제한다.
 
 제5조 (결속)
 결속은 상대 관리인이 수락해야 성립한다. 거절된 신청을 반복하지 않는다.

@@ -151,7 +151,7 @@ export default function RegistryDetail() {
         )}
 
         <footer className="border-t border-rule px-6 pb-12 pt-8 text-center sm:px-10">
-          <p className="text-[15px]">{approved ? '위 사람이 협회 요원으로 등록되었음을 증명합니다.' : '심사가 끝나지 않은 기록입니다.'}</p>
+          <p className="text-[15px]">{approved ? '위 사람이 파수국 요원으로 등록되었음을 증명합니다.' : '심사가 끝나지 않은 기록입니다.'}</p>
           <div className="relative mx-auto mt-5 inline-block">
             <p className="font-mono text-[13px] text-muted-foreground">{fmtDate(approved ? c.updated_at : c.created_at)}</p>
             <p className="mt-1 text-[22px] font-black tracking-[0.15em]">{WORLD.orgName}장</p>

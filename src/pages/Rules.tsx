@@ -42,7 +42,7 @@ function ArticleHead({ text }: { text: string }) {
 }
 
 export default function Rules() {
-  usePageMeta('협회 규정', `${WORLD.orgName} 운영 규정.`)
+  usePageMeta('파수국 규정', `${WORLD.orgName} 운영 규정.`)
   const { session } = useAuth()
   const page = useAsync(() => api.getPage('rules'), [])
 
@@ -60,7 +60,7 @@ export default function Rules() {
           홈
         </Link>
         <span>›</span>
-        <span className="text-foreground">협회 규정</span>
+        <span className="text-foreground">파수국 규정</span>
       </nav>
 
       <div className="mx-auto mt-8 grid max-w-5xl gap-8 lg:grid-cols-[190px_1fr]">

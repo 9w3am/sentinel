@@ -53,7 +53,7 @@ export default function Admin() {
           { value: 'notices', label: '알림마당' },
           { value: 'incidents', label: '게이트 기록' },
           { value: 'alert', label: '경보 단계' },
-          { value: 'rules', label: '협회 규정' },
+          { value: 'rules', label: '파수국 규정' },
           { value: 'guide', label: '안내 문서' },
         ]}
       />
@@ -724,7 +724,7 @@ function RulesEditor() {
         <p className="mb-2 font-bold text-foreground">작성 방법</p>
         <p>'제1조 (목적)'처럼 제n조로 시작하는 줄은 조항 제목이 되고, 그 아래 줄이 조항 내용이 됩니다.</p>
         <p className="mt-2">'부칙'으로 시작하는 줄은 부칙 제목이 됩니다. 조항 사이는 빈 줄로 띄워 주세요.</p>
-        <p className="mt-2">커뮤 규칙을 협회 규정 말투로 적으면 겉모습이 그대로 유지됩니다.</p>
+        <p className="mt-2">커뮤 규칙을 파수국 규정 말투로 적으면 겉모습이 그대로 유지됩니다.</p>
       </div>
     </div>
   )

@@ -6,8 +6,8 @@ import type { Settings } from '../lib/types'
 import { Emblem, Empty, Icon, Loading, WRAP, alertColor, cx } from './ui'
 
 const NAV = [
-  { to: '/about', label: '협회 소개', end: false },
-  { to: '/rules', label: '협회 규정', end: false },
+  { to: '/about', label: '파수국 소개', end: false },
+  { to: '/rules', label: '파수국 규정', end: false },
   { to: '/incidents', label: '게이트 현황', end: false },
   { to: '/system', label: '등급 안내', end: false },
   { to: '/registry', label: '요원 명부', end: false },
@@ -236,7 +236,7 @@ function Footer() {
   return (
     <footer className="mt-20 border-t border-rule">
       <div className={cx(WRAP, 'flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-6 text-[12px] text-muted-foreground')}>
-        <span>{WORLD.orgName} · 본 누리집의 기록은 협회 규정에 따라 보존됩니다.</span>
+        <span>{WORLD.orgName} · 본 누리집의 기록은 파수국 규정에 따라 보존됩니다.</span>
         <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {GUIDE_LINKS.map((g) => (
             <Link key={g.to} to={g.to} className="hover:text-foreground">
@@ -254,7 +254,7 @@ function Footer() {
 const OFFICE_NAV = [
   { to: '/office', label: '개요', end: true },
   { to: '/office/cards', label: '내 등록증', end: false },
-  { to: '/office/board', label: '협회 게시판', end: false },
+  { to: '/office/board', label: '내부 게시판', end: false },
   { to: '/office/bamboo', label: '대나무숲', end: false },
   { to: '/office/cases', label: '조사', end: false },
   { to: '/office/bonds', label: '결속 관계', end: false },

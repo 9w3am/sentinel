@@ -51,7 +51,7 @@ export default function System() {
         ].map(([k, t, d]) => (
           <div key={k} className="border-t-2 border-foreground py-6 pr-8">
             <div className="flex items-center gap-3">
-              <KindMark kind={k} size={18} />
+              <KindMark kind={k} size={26} />
               <h2 className="text-[34px] font-black tracking-[-0.04em]">{t}</h2>
             </div>
             <p className="mt-2 max-w-md text-[16px] text-muted-foreground">{d}</p>

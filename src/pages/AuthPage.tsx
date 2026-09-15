@@ -44,7 +44,7 @@ export default function AuthPage() {
       <div className="lg:pt-4">
         <h1 className="text-[44px] font-black leading-[1.05] tracking-[-0.04em] sm:text-[64px]">{mode === 'login' ? '로그인' : '가입'}</h1>
         <p className="mt-4 max-w-lg text-[16px] leading-[1.8] text-muted-foreground">
-          {mode === 'login' ? '집무실, 협회 게시판, 조사, 대나무숲은 등록 요원만 쓸 수 있습니다.' : '편입 신청서가 합격하면 결과 조회에서 편입 인가 번호를 받습니다. 그 번호로 계정을 만듭니다.'}
+          {mode === 'login' ? '집무실, 내부 게시판, 조사, 대나무숲은 등록 요원만 쓸 수 있습니다.' : '편입 신청서가 합격하면 결과 조회에서 편입 인가 번호를 받습니다. 그 번호로 계정을 만듭니다.'}
         </p>
         <ol className="mt-10 max-w-lg border-t-2 border-foreground">
           {[
