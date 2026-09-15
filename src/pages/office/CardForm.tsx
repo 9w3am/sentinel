@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CharacterCard } from '../../components/CharacterCard'
-import { ProfileDocEditor, PROFILE_DOC_BYTES, docBytes, emptyDoc, isEmptyDoc, parseProfileDoc, type ProfileDoc } from '../../components/ProfileDoc'
+import { PROFILE_DOC_BYTES, docBytes, emptyDoc, isEmptyDoc, parseProfileDoc, type ProfileDoc } from '../../components/ProfileDoc'
+import { DocSlot } from '../../components/profile/DocSlot'
+import { clearDraft, loadDraft, setDraftName, useDraftSync } from '../../components/profile/draft'
 import { ErrorBox, Loading, Segmented } from '../../components/ui'
 import { BRANCHES, DETAIL_FIELDS, GRADES, GUIDING_TYPES, KINDS, type Kind } from '../../config/world'
 import { api, useAuth, usePageMeta } from '../../lib/backend'
@@ -17,8 +19,8 @@ export default function CardForm() {
   const { session } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState<CharacterInput>(empty)
-  const [doc, setDoc] = useState<ProfileDoc>(emptyDoc)
-  const [docOpen, setDocOpen] = useState(false)
+  const draftKey = `card:${id ?? 'new'}`
+  const [doc, setDoc] = useState<ProfileDoc>(() => (id ? null : loadDraft('card:new')?.doc) ?? emptyDoc())
   const [secret, setSecret] = useState('')
   const [loading, setLoading] = useState(editing)
   const [busy, setBusy] = useState(false)
@@ -26,6 +28,8 @@ export default function CardForm() {
   const [err, setErr] = useState<unknown>(null)
   const [status, setStatus] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  useDraftSync(draftKey, setDoc)
+  useEffect(() => setDraftName(draftKey, form.name), [draftKey, form.name])
 
   useEffect(() => {
     if (!id) return
@@ -39,7 +43,9 @@ export default function CardForm() {
           const { profile_doc, ...details } = c.details ?? {}
           setForm({ id: c.id, name: c.name, codename: c.codename ?? '', kind: c.kind, grade: c.grade, affiliation: c.affiliation ?? '', details, is_public: c.is_public, avatar_url: c.avatar_url })
           const pd = parseProfileDoc(profile_doc)
-          if (pd) setDoc(pd)
+          const draft = loadDraft(`card:${c.id}`)
+          if (draft && draft.at > c.updated_at) setDoc(draft.doc)
+          else if (pd) setDoc(pd)
           setSecret(s ?? '')
           setStatus(c.status)
         }
@@ -80,6 +86,7 @@ export default function CardForm() {
       if (withDoc) details.profile_doc = JSON.stringify(doc)
       const savedId = await api.saveCharacter({ ...form, details })
       if (secret.trim() || editing) await api.saveSecret(savedId, secret)
+      clearDraft(draftKey)
       navigate('/office/cards', {
         state: { flash: editing ? '수정했습니다. 내용이 바뀌었으면 다시 심사를 받습니다.' : '신청했습니다. 관리부 심사를 기다려 주세요.' },
       })
@@ -197,14 +204,8 @@ export default function CardForm() {
           </Chapter>
 
           <Chapter no="05" title="프로필 문서">
-            <p className="-mt-2 text-[13.5px] text-muted-foreground">명부의 등록 기록에서 '프로필 문서'로 열리는 꾸밈 문서입니다. 선택입니다. 신청서에서 복사해 둔 코드가 있으면 '코드 불러오기'에 붙여 넣으세요.</p>
-            {docOpen || !isEmptyDoc(doc) ? (
-              <ProfileDocEditor value={doc} onChange={setDoc} name={form.name} stacked />
-            ) : (
-              <button type="button" className="btn" onClick={() => setDocOpen(true)}>
-                프로필 문서 꾸미기
-              </button>
-            )}
+            <p className="-mt-2 text-[13.5px] text-muted-foreground">명부의 등록 기록에서 '프로필 문서'로 열리는 꾸밈 문서입니다. 선택입니다. 꾸미기 창에서 고친 내용은 여기 바로 반영되고, 아래 버튼을 눌러야 등록증에 들어갑니다. 프로필 문서만 고치면 다시 심사하지 않습니다.</p>
+            <DocSlot doc={doc} draftKey={draftKey} name={form.name} onChange={setDoc} />
           </Chapter>
 
           <Chapter no="06" title="비공개 설정">

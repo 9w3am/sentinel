@@ -41,7 +41,7 @@ export default function Profile() {
               </Link>
             )}
             {c && canManage && (
-              <Link to={`/office/cards/${c.id}/edit`} className="btn btn-primary">
+              <Link to={`/studio/card/${c.id}`} className="btn btn-primary">
                 프로필 꾸미기
               </Link>
             )}
@@ -75,7 +75,7 @@ export default function Profile() {
           <span className="ml-auto" />
           {saveErr && <span className="text-[13px] text-destructive">이미지를 만들지 못했습니다.</span>}
           {canManage && (
-            <Link to={`/office/cards/${c.id}/edit`} className="btn btn-sm">
+            <Link to={`/studio/card/${c.id}`} className="btn btn-sm">
               꾸미기
             </Link>
           )}

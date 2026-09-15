@@ -4,6 +4,7 @@ import { ErrorBox, GradeBadge, KindBadge, Pill, SectionHead, StatCard, StatusPil
 import { categoryLabel } from '../../config/world'
 import { api, useAsync, useAuth, usePageMeta } from '../../lib/backend'
 import { fmtDate, relTime } from '../../lib/util'
+import { PlayHub } from './PlayHub'
 
 const shortDate = (iso: string) => fmtDate(iso).replace(/\. /g, '.').replace(/\.$/, '')
 
@@ -78,6 +79,8 @@ export default function Office() {
           {err ? <ErrorBox error={err} /> : null}
         </div>
       </div>
+
+      <PlayHub />
 
       <section>
         <SectionHead

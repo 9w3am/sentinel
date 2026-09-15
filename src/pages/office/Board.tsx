@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { RichText } from '../../components/RichText'
 import { Emblem, Empty, ErrorBox, Loading, Pill, Segmented, Tabs } from '../../components/ui'
 import { POST_CATEGORIES, WORLD, categoryLabel } from '../../config/world'
-import { api, useAsync, useAuth, usePageMeta } from '../../lib/backend'
+import { api, play, useAsync, useAuth, usePageMeta } from '../../lib/backend'
+import { MemberPicker } from './Threads'
 import type { CharacterBrief, Post } from '../../lib/types'
 import { errMsg, fmtDate, relTime } from '../../lib/util'
 
@@ -20,7 +21,7 @@ export function BoardList() {
   const [params, setParams] = useSearchParams()
   const cat = params.get('c') ?? ''
   const all = useAsync(() => api.listPosts(), [])
-  const list = (all.data ?? []).filter((p) => !cat || p.category === cat)
+  const list = (all.data ?? []).filter((p) => (cat === 'noreply' ? !p.comment_count : !cat || p.category === cat))
 
   return (
     <div>
@@ -29,7 +30,7 @@ export function BoardList() {
           <p className="text-[13px] text-muted-foreground">요원 전용</p>
           <h2 className="text-[30px] font-black tracking-[-0.03em]">내부 게시판</h2>
         </div>
-        <Link to={`/office/board/new${cat ? `?c=${cat}` : ''}`} className="btn btn-primary">
+        <Link to={`/office/board/new${cat && cat !== 'noreply' ? `?c=${cat}` : ''}`} className="btn btn-primary">
           기안 작성
         </Link>
       </div>
@@ -37,7 +38,7 @@ export function BoardList() {
         className="mb-4"
         value={cat}
         onChange={(v) => setParams(v ? { c: v } : {})}
-        items={[{ value: '', label: '전체', count: all.data?.length }, ...POST_CATEGORIES.map((c) => ({ value: c.value as string, label: c.label, count: (all.data ?? []).filter((p) => p.category === c.value).length }))]}
+        items={[{ value: '', label: '전체', count: all.data?.length }, ...POST_CATEGORIES.map((c) => ({ value: c.value as string, label: c.label, count: (all.data ?? []).filter((p) => p.category === c.value).length })), { value: 'noreply', label: '답 없는 기록', count: (all.data ?? []).filter((p) => !p.comment_count).length }]}
       />
       {all.loading && <Loading />}
       {all.error ? <ErrorBox error={all.error} /> : null}
@@ -120,6 +121,7 @@ export function BoardNew() {
   const gates = useAsync(() => api.listIncidents(), [])
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<unknown>(null)
 
@@ -129,6 +131,7 @@ export function BoardNew() {
     setErr(null)
     try {
       const id = await api.createPost({ category, title: title.trim(), body, character_id: characterId || null, incident_id: incidentId || null })
+      if (tags.length) await play.setPostTags(id, tags).catch(() => undefined)
       navigate(`/office/board/${id}`, { replace: true })
     } catch (e) {
       setErr(e)
@@ -166,6 +169,11 @@ export function BoardNew() {
                 ))}
               </select>
             </div>
+          </div>
+          <div>
+            <span className="form-label">등장 캐릭터 (선택)</span>
+            <MemberPicker exclude={characterId ? [characterId] : []} value={tags} onChange={setTags} />
+            <p className="mt-1 text-[12.5px] text-muted-foreground">태그한 캐릭터의 등록증 아래 '등장한 기록'에 이 글이 뜹니다.</p>
           </div>
           <div>
             <label className="form-label" htmlFor="t">
@@ -206,6 +214,8 @@ export function BoardDetail() {
   const [busy, setBusy] = useState(false)
   const p = post.data
   const gate = useAsync(() => (p?.incident_id ? api.getIncident(p.incident_id) : Promise.resolve(null)), [p?.incident_id])
+  const tagIds = useAsync(() => play.getPostTags(id).catch(() => [] as string[]), [id])
+  const tagChars = useAsync(() => ((tagIds.data ?? []).length ? api.listPublicCharacters() : Promise.resolve([])), [tagIds.data])
   usePageMeta(p?.title ?? '기안')
 
   if (post.loading) return <Loading />
@@ -235,6 +245,22 @@ export function BoardDetail() {
       ),
     ],
     ['관리인', p.author_name ?? '요원'],
+    ...((tagChars.data ?? []).some((c) => tagIds.data?.includes(c.id))
+      ? ([
+          [
+            '등장',
+            <span className="flex flex-wrap gap-x-2">
+              {(tagChars.data ?? [])
+                .filter((c) => tagIds.data?.includes(c.id))
+                .map((c) => (
+                  <Link key={c.id} to={`/registry/${c.id}`} className="hover:text-seal">
+                    {c.name}
+                  </Link>
+                ))}
+            </span>,
+          ],
+        ] as [string, ReactNode][])
+      : []),
     ['시행일', fmtDate(p.created_at, true)],
     ...(gate.data
       ? ([

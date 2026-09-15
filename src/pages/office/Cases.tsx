@@ -26,7 +26,26 @@ export function CaseList() {
           조사 방법 안내 →
         </Link>
       </div>
-      <p className="mb-6 text-[13.5px] text-muted-foreground">대상과 방법을 골라 조사합니다. 주사위도 횟수 제한도 없습니다. 찾은 단서는 모든 요원에게 공유되고 팀 실적에 올라갑니다.</p>
+      <ol className="mb-6 grid gap-px border border-rule bg-rule text-[14px] sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ['사건 고르기', '아래 목록에서 조사 중인 사건을 엽니다.'],
+          ['대상 · 방법 고르기', '조사할 대상을 고르고 현장 수색 · 탐문 · 기록 열람 · 감각 탐지(센티넬) · 정신 감응(가이드) 중 방법을 고릅니다.'],
+          ['단서 확인', '맞는 방법이면 단서가 나옵니다. 주사위 · 횟수 제한 없이 방법을 바꿔 다시 해 볼 수 있어요.'],
+          ['결론 내기', '단서를 모아 사건 결론을 고릅니다. 찾은 단서는 모든 요원에게 공유되고 팀 실적에 올라갑니다.'],
+        ].map(([h, d], i) => (
+          <li key={h} className="bg-card p-4">
+            <span className="font-mono text-[12px] text-seal">0{i + 1}</span>
+            <b className="mt-1 block">{h}</b>
+            <span className="mt-1 block text-muted-foreground">{d}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13.5px] text-muted-foreground">
+        사건 파일에 없는 곳을 조사하고 싶다면 운영진에게 조사 요청을 보내 주세요. 답변은 문의함으로 옵니다.
+        <Link to="/office/inbox?c=investigate" className="btn btn-sm">
+          조사 요청 보내기
+        </Link>
+      </p>
       {cases.loading && <Loading />}
       {cases.error ? <ErrorBox error={cases.error} /> : null}
       {cases.data && list.length === 0 && <Empty title="열린 사건 파일이 없습니다">운영진이 사건을 올리면 이곳에 표시됩니다.</Empty>}

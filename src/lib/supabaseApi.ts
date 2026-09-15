@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
   AnonAdminRow,
   AnonComment,
@@ -32,8 +32,9 @@ import { randomCode, uid } from './util'
 
 const BRIEF = 'id,name,codename,kind,grade,avatar_url'
 
-export function createSupabaseApi(url: string, key: string): Api {
+export function createSupabaseApi(url: string, key: string, onClient?: (sb: SupabaseClient) => void): Api {
   const sb = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } })
+  onClient?.(sb)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function must<T = any>(r: { data?: unknown; error: unknown }): T {

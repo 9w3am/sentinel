@@ -181,6 +181,7 @@ export const INBOX_CATEGORIES = [
   { value: 'question', label: '문의' },
   { value: 'suggestion', label: '건의' },
   { value: 'report', label: '신고' },
+  { value: 'investigate', label: '조사 요청' },
   { value: 'break', label: '휴식 · 하차' },
   { value: 'etc', label: '기타' },
 ] as const

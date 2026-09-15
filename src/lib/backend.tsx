@@ -2,13 +2,20 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createLocalApi } from './localApi'
 import { createSupabaseApi } from './supabaseApi'
 import type { Api, Session } from './types'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createLocalPlay } from './playLocal'
+import { createSupabasePlay } from './playSupabase'
+import type { PlayApi } from './playTypes'
 import { WORLD } from '../config/world'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 const forceLocal = import.meta.env.VITE_BACKEND === 'local'
 
-export const api: Api = url && key && !forceLocal ? createSupabaseApi(url, key) : createLocalApi()
+let client: SupabaseClient | null = null
+export const api: Api = url && key && !forceLocal ? createSupabaseApi(url, key, (sb) => (client = sb)) : createLocalApi()
+/** 러닝 기능(교신 · 무전 · 훈련 · 의뢰 · 휴직 · 태그) */
+export const play: PlayApi = client ? createSupabasePlay(client, api) : createLocalPlay(api)
 
 // ── 인증 상태
 interface AuthState {

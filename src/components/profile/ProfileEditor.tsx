@@ -1,7 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { copyText, cx } from '../ui'
 import { ProfileDocView, type EditHooks } from './ProfileView'
+import { PROFILE_EXAMPLES } from './examples'
 import { StickerArt } from './stickers'
+import { DocThumb } from './Thumb'
 import {
   ACCENTS,
   BLOCK_GROUPS,
@@ -31,6 +33,8 @@ import {
   type Page,
   type ProfileDoc,
   type Sticker,
+  type StickerKey,
+  type ThemeKey,
 } from './model'
 
 type Tab = 'doc' | 'page' | 'block' | 'sticker'
@@ -172,7 +176,15 @@ function RowsEditor({ t, rows, onRows }: { t: BlockType; rows: string[][]; onRow
   )
 }
 
-export function ProfileDocEditor({ value, onChange, name = '', stacked = false }: { value: ProfileDoc; onChange: (d: ProfileDoc) => void; name?: string; stacked?: boolean }) {
+/** 꾸미기 창 머리에 들어갈 것들 */
+export interface StudioChrome {
+  title: ReactNode
+  status?: ReactNode
+  back?: ReactNode
+  actions?: ReactNode
+}
+
+export function ProfileDocEditor({ value, onChange, name = '', stacked = false, studio }: { value: ProfileDoc; onChange: (d: ProfileDoc) => void; name?: string; stacked?: boolean; studio?: StudioChrome }) {
   const d = value
   const latest = useRef(d)
   latest.current = d
@@ -189,10 +201,74 @@ export function ProfileDocEditor({ value, onChange, name = '', stacked = false }
   const bytes = docBytes(d)
   const over = bytes > PROFILE_DOC_BYTES
 
+  // 되돌리기 기록: 0.7초 안에 이어진 변경은 한 번으로 묶는다
+  const hist = useRef<{ past: ProfileDoc[]; future: ProfileDoc[]; at: number }>({ past: [], future: [], at: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [sheet, setSheet] = useState(false)
+  const [gallery, setGallery] = useState(false)
+  const [menuOpen, setMenuOpen] = useState<{ key: string; x: number; y: number } | null>(null)
+  const canvasRef = useRef<HTMLElement>(null)
   const commit = (next: ProfileDoc) => {
+    const h = hist.current
+    const t = Date.now()
+    if (t - h.at > 700) {
+      h.past.push(latest.current)
+      if (h.past.length > 100) h.past.shift()
+    }
+    h.at = t
+    h.future = []
     latest.current = next
     onChange(next)
   }
+  const undo = () => {
+    const h = hist.current
+    const prev = h.past.pop()
+    if (!prev) return
+    h.future.push(latest.current)
+    h.at = 0
+    latest.current = prev
+    onChange(prev)
+  }
+  const redo = () => {
+    const h = hist.current
+    const next = h.future.pop()
+    if (!next) return
+    h.past.push(latest.current)
+    h.at = 0
+    latest.current = next
+    onChange(next)
+  }
+  const keys = useRef({ undo, redo })
+  keys.current = { undo, redo }
+  const isStudio = !!studio
+  useEffect(() => {
+    if (!isStudio) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      if (!(e.ctrlKey || e.metaKey)) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        keys.current.undo()
+      } else if (k === 'y' || (k === 'z' && e.shiftKey)) {
+        e.preventDefault()
+        keys.current.redo()
+      }
+    }
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest?.('[data-menu]')) setMenuOpen(null)
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onDown)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [isStudio])
   const set = (patch: Partial<ProfileDoc>) => commit({ ...latest.current, ...patch })
   const setPages = (fn: (pages: Page[]) => Page[]) => commit({ ...latest.current, pages: fn(latest.current.pages) })
   const setPage = (i: number, patch: Partial<Page>) => setPages((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)))
@@ -221,6 +297,7 @@ export function ProfileDocEditor({ value, onChange, name = '', stacked = false }
       setPi(i)
       setBid(id)
       setTab('block')
+      if (studio && window.innerWidth < 768) setSheet(true)
     },
     onSticker: (i, id) => {
       setPi(i)
@@ -910,6 +987,320 @@ export function ProfileDocEditor({ value, onChange, name = '', stacked = false }
       <ProfileDocView doc={d} edit={hooks} />
     </div>
   )
+
+  // ── 따로 여는 꾸미기 창 (문서 편집기 모양: 메뉴 · 되돌리기 · 확대 · 페이지 목록 · 편집 패널)
+  if (studio) {
+    const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5]
+    const zi = Math.max(0, ZOOMS.findIndex((z) => z >= zoom - 0.001))
+    const blocksFull = !page || page.blocks.length >= LIMITS.blocks
+    // 메뉴는 화면 밖으로 나가지 않게 버튼 위치를 재서 띄운다
+    const menu = (label: string, body: ReactNode, wide = false) => {
+      const w = wide ? 300 : 230
+      const open = menuOpen?.key === label
+      return (
+        <div data-menu className="shrink-0">
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            className={cx('px-2.5 py-2 hover:bg-muted', open && 'bg-muted font-bold text-seal')}
+            onClick={(e) => {
+              if (open) return setMenuOpen(null)
+              const r = e.currentTarget.getBoundingClientRect()
+              setMenuOpen({ key: label, x: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), y: r.bottom + 2 })
+            }}
+          >
+            {label}
+          </button>
+          {open && menuOpen && (
+            <div
+              role="menu"
+              className="fixed z-[75] max-h-[70dvh] overflow-y-auto border border-rule bg-card p-1 shadow-2xl"
+              style={{ left: menuOpen.x, top: menuOpen.y, width: w }}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) setMenuOpen(null)
+              }}
+            >
+              {body}
+            </div>
+          )}
+        </div>
+      )
+    }
+    const item = (label: ReactNode, onClick: () => void, disabled = false, key?: string) => (
+      <button key={key} type="button" disabled={disabled} onClick={onClick} className="block w-full px-3 py-1.5 text-left text-[13.5px] hover:bg-muted disabled:opacity-40">
+        {label}
+      </button>
+    )
+    const goPage = (i: number) => {
+      setPi(i)
+      canvasRef.current?.querySelector(`[data-page="${i + 1}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    const addBlock = (t: BlockType) => {
+      if (blocksFull) return
+      const nb = newBlock(t)
+      setBlocks(pageIndex, (bs) => [...bs, nb])
+      setBid(nb.id)
+      setTab('block')
+    }
+    const addSticker = (k: StickerKey) => {
+      if (!page || page.stickers.length >= LIMITS.stickers) return
+      const ns = { ...newSticker(k), x: 30 + Math.random() * 40, y: 20 + Math.random() * 30 }
+      setStickers(pageIndex, (ss) => [...ss, ns])
+      setSid(ns.id)
+      setTab('sticker')
+    }
+    const addPage = (make: (n: string) => Page) => {
+      if (latest.current.pages.length >= LIMITS.pages) return
+      setPages((ps) => [...ps, make(name)])
+      const i = latest.current.pages.length - 1
+      setPi(i)
+      window.setTimeout(() => goPage(i), 80)
+    }
+
+    return (
+      <div className="fixed inset-0 z-[70] flex h-[100dvh] flex-col bg-background text-foreground">
+        <header className="flex items-center gap-2 border-b border-rule bg-card px-2 py-1.5 sm:gap-3 sm:px-4">
+          {studio.back}
+          <span className="hidden h-8 w-8 shrink-0 place-items-center bg-seal text-ink sm:grid" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="16" height="16">
+              <path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M5.5 7h5M5.5 9.5h5M5.5 12h3" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-bold leading-tight">{studio.title}</p>
+            <p className={cx('truncate text-[12px] leading-tight', over ? 'text-destructive' : 'text-muted-foreground')}>{over ? '문서가 너무 깁니다. 칸이나 페이지를 줄여 주세요.' : studio.status}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <button type="button" className="btn btn-sm px-2.5 text-[16px]" onClick={undo} disabled={!hist.current.past.length} title="되돌리기 (Ctrl+Z)" aria-label="되돌리기">
+              ↶
+            </button>
+            <button type="button" className="btn btn-sm px-2.5 text-[16px]" onClick={redo} disabled={!hist.current.future.length} title="다시 실행 (Ctrl+Y)" aria-label="다시 실행">
+              ↷
+            </button>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">{studio.actions}</div>
+        </header>
+
+        <div className="flex flex-wrap items-center gap-x-0.5 border-b border-rule bg-card px-1.5 text-[13.5px] sm:px-3" aria-label="꾸미기 메뉴">
+          {menu(
+            '파일',
+            <>
+              {item('예시 문서에서 고르기…', () => setGallery(true))}
+              {item('기본 틀로 새로 시작', () => {
+                if (!isEmptyDoc(latest.current) && !confirm('지금 문서를 기본 틀로 바꿀까요? 되돌리기로 돌아올 수 있습니다.')) return
+                commit(starterDoc(name, latest.current))
+                setPi(0)
+              })}
+              <hr className="my-1 border-rule" />
+              {item('코드 복사', async () => flash((await copyText(JSON.stringify(latest.current))) ? '코드를 복사했습니다' : '복사하지 못했습니다'))}
+              {item('코드 불러오기…', () => {
+                setCode('')
+                setSheet(true)
+              })}
+              <hr className="my-1 border-rule" />
+              {item(
+                '전부 비우기',
+                () => {
+                  if (!confirm('문서를 전부 비울까요? 되돌리기로 돌아올 수 있습니다.')) return
+                  commit({ ...emptyDoc(), ...themeDefaults(latest.current.theme) })
+                  setPi(0)
+                  setBid(null)
+                  setSid(null)
+                },
+                isEmptyDoc(d),
+              )}
+            </>,
+          )}
+          {menu(
+            '삽입',
+            <>
+              {BLOCK_GROUPS.map((g) => (
+                <div key={g}>
+                  <p className="px-3 pb-0.5 pt-2 text-[11px] font-bold text-muted-foreground">{g}</p>
+                  {BLOCK_TYPES.filter((x) => x.group === g).map((x) => item(x.label, () => addBlock(x.t), blocksFull, x.t))}
+                </div>
+              ))}
+            </>,
+          )}
+          {menu(
+            '페이지',
+            <>
+              {PAGE_TEMPLATES.map((t) => item(`새 페이지 · ${t.label}`, () => addPage(t.make), d.pages.length >= LIMITS.pages, t.key))}
+              <hr className="my-1 border-rule" />
+              {item(
+                `${pageIndex + 1}쪽 복제`,
+                () => {
+                  if (!page) return
+                  const copy: Page = { ...page, id: uid(), blocks: page.blocks.map((b) => ({ ...b, id: uid() })), stickers: page.stickers.map((s) => ({ ...s, id: uid() })) }
+                  setPages((ps) => [...ps.slice(0, pageIndex + 1), copy, ...ps.slice(pageIndex + 1)])
+                  setPi(pageIndex + 1)
+                },
+                d.pages.length >= LIMITS.pages,
+              )}
+              {item(`${pageIndex + 1}쪽 앞으로`, () => (setPages((ps) => move(ps, pageIndex, -1)), setPi(pageIndex - 1)), pageIndex === 0)}
+              {item(`${pageIndex + 1}쪽 뒤로`, () => (setPages((ps) => move(ps, pageIndex, 1)), setPi(pageIndex + 1)), pageIndex === d.pages.length - 1)}
+              {item(
+                `${pageIndex + 1}쪽 지우기`,
+                () => {
+                  if (!confirm(`${pageIndex + 1}쪽을 지울까요?`)) return
+                  setPages((ps) => ps.filter((_, j) => j !== pageIndex))
+                  setPi(Math.max(0, pageIndex - 1))
+                },
+                d.pages.length <= 1,
+              )}
+              <hr className="my-1 border-rule" />
+              {item('배경 이미지 · 여백 · 질감…', () => {
+                setTab('page')
+                setSheet(true)
+              })}
+            </>,
+          )}
+          {menu(
+            '스티커',
+            <div className="grid grid-cols-4 gap-1 p-1">
+              {STICKERS.map((x) => (
+                <button key={x.k} type="button" className="flex flex-col items-center gap-0.5 border border-rule p-1 hover:border-seal disabled:opacity-40" disabled={!page || page.stickers.length >= LIMITS.stickers} onClick={() => addSticker(x.k)}>
+                  <span className="block w-8">
+                    <StickerArt k={x.k} color={d.accent} text={x.text} />
+                  </span>
+                  <span className="text-[10.5px] leading-tight">{x.label}</span>
+                </button>
+              ))}
+            </div>,
+            true,
+          )}
+          {menu(
+            '서식',
+            <>
+              <p className="px-3 pb-1 pt-2 text-[11px] font-bold text-muted-foreground">테마</p>
+              <div className="grid grid-cols-2 gap-1 px-1">
+                {THEMES.map((t) => (
+                  <button key={t.key} type="button" onClick={() => set(themeDefaults(t.key as ThemeKey))} className={cx('flex items-center gap-2 border px-2 py-1 text-left text-[12.5px]', d.theme === t.key ? 'border-seal' : 'border-rule hover:border-foreground')}>
+                    <span className="h-4 w-4 shrink-0 border border-rule" style={{ background: `linear-gradient(135deg, ${t.bg} 55%, ${t.accent} 55%)` }} />
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <hr className="my-2 border-rule" />
+              {item('글꼴 · 질감 · 페이지 비율…', () => {
+                setTab('doc')
+                setSheet(true)
+              })}
+            </>,
+            true,
+          )}
+          <span className="mx-1.5 hidden h-5 w-px bg-rule sm:block" aria-hidden="true" />
+          <div className="hidden items-center gap-1 py-1 sm:flex" role="group" aria-label="포인트 색">
+            {ACCENTS.map((c) => (
+              <button key={c} type="button" onClick={() => set({ accent: c })} aria-label={`포인트 색 ${c}`} aria-pressed={d.accent === c} className={cx('h-5 w-5 border', d.accent === c ? 'border-seal ring-2 ring-seal/60' : 'border-rule')} style={{ background: c }} />
+            ))}
+          </div>
+          <span className="ml-auto" />
+          <div className="flex items-center gap-0.5 py-1" role="group" aria-label="확대">
+            <button type="button" className="px-2 py-1 hover:bg-muted disabled:opacity-30" disabled={zi <= 0} onClick={() => setZoom(ZOOMS[Math.max(0, zi - 1)])} aria-label="축소">
+              −
+            </button>
+            <button type="button" className="w-14 py-1 text-center font-mono text-[12.5px] hover:bg-muted" onClick={() => setZoom(1)} title="100%로">
+              {Math.round(zoom * 100)}%
+            </button>
+            <button type="button" className="px-2 py-1 hover:bg-muted disabled:opacity-30" disabled={zi >= ZOOMS.length - 1} onClick={() => setZoom(ZOOMS[Math.min(ZOOMS.length - 1, zi + 1)])} aria-label="확대">
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1">
+          <aside className="hidden w-[150px] shrink-0 overflow-y-auto border-r border-rule bg-card/50 p-3 lg:block" aria-label="페이지 목록">
+            <p className="mb-2 text-[11px] font-bold tracking-[0.12em] text-muted-foreground">
+              페이지 {d.pages.length}/{LIMITS.pages}
+            </p>
+            {d.pages.map((p, i) => (
+              <button key={p.id} type="button" onClick={() => goPage(i)} className="group mb-3 block w-full text-left" aria-current={i === pageIndex ? 'page' : undefined}>
+                <span className={cx('block max-h-[178px] overflow-hidden border-2', i === pageIndex ? 'border-seal' : 'border-transparent group-hover:border-rule')}>
+                  <DocThumb doc={{ ...d, pages: [p] }} width={118} />
+                </span>
+                <span className={cx('mt-1 block text-center font-mono text-[11px]', i === pageIndex ? 'text-seal' : 'text-muted-foreground')}>{i + 1}</span>
+              </button>
+            ))}
+            {d.pages.length < LIMITS.pages && (
+              <button type="button" className="block w-full border border-dashed border-rule py-6 text-center text-[12px] text-muted-foreground hover:border-seal hover:text-seal" onClick={() => addPage(PAGE_TEMPLATES[0].make)}>
+                + 빈 페이지
+              </button>
+            )}
+          </aside>
+
+          <main ref={canvasRef} className={cx('min-w-0 flex-1 overflow-y-auto bg-[#252521] px-3 py-5 sm:px-8 sm:py-8', sheet ? 'hidden md:block' : 'block')}>
+            <div className="mx-auto" style={{ width: `min(100%, ${Math.round(760 * zoom)}px)` }}>
+              <ProfileDocView doc={d} edit={hooks} />
+            </div>
+            <p className="mx-auto mt-6 max-w-md text-center text-[12px] text-[#8d8a80]">칸을 누르면 편집 패널에서 고칠 수 있고, 스티커는 끌어서 옮깁니다. Ctrl+Z 되돌리기 · Ctrl+Y 다시 실행</p>
+          </main>
+
+          <aside className={cx('min-h-0 w-full shrink-0 overflow-y-auto border-l border-rule bg-card p-4 md:block md:w-[380px] xl:w-[420px]', sheet ? 'block' : 'hidden')} aria-label="편집 패널">
+            {panel}
+          </aside>
+        </div>
+
+        <div className="grid grid-cols-2 border-t border-rule bg-card md:hidden">
+          <button type="button" className={cx('py-3 text-[14px]', !sheet && 'bg-seal font-bold text-ink')} onClick={() => setSheet(false)}>
+            미리보기 · {pageIndex + 1}/{d.pages.length}쪽
+          </button>
+          <button type="button" className={cx('py-3 text-[14px]', sheet && 'bg-seal font-bold text-ink')} onClick={() => setSheet(true)}>
+            편집 패널
+          </button>
+        </div>
+
+        {msg && (
+          <p className="pointer-events-none fixed bottom-16 left-1/2 z-[80] -translate-x-1/2 border border-seal bg-card px-4 py-2 text-[13px] shadow-xl md:bottom-6" role="status">
+            {msg}
+          </p>
+        )}
+
+        {gallery && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="예시 문서" onClick={(e) => e.target === e.currentTarget && setGallery(false)}>
+            <div className="max-h-[90dvh] w-full max-w-5xl overflow-y-auto border border-rule bg-card p-4 sm:p-6">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-[20px] font-black">예시 문서에서 시작</p>
+                <button type="button" className="btn btn-sm" onClick={() => setGallery(false)}>
+                  닫기
+                </button>
+              </div>
+              <p className="mb-5 text-[13.5px] text-muted-foreground">고르면 지금 문서가 예시로 바뀝니다. 이름 칸에는 캐릭터 이름이 들어가요. 마음에 안 들면 되돌리기로 돌아올 수 있습니다.</p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {PROFILE_EXAMPLES.map((ex) => {
+                  const sample = ex.make(name)
+                  return (
+                    <button
+                      key={ex.key}
+                      type="button"
+                      className="group text-left"
+                      onClick={() => {
+                        commit(ex.make(name))
+                        setPi(0)
+                        setBid(null)
+                        setSid(null)
+                        setGallery(false)
+                      }}
+                    >
+                      <span className="flex justify-center overflow-hidden border border-rule bg-muted group-hover:border-seal">
+                        <DocThumb doc={{ ...sample, pages: [sample.pages[0]] }} width={180} maxHeight={240} />
+                      </span>
+                      <b className="mt-1.5 block text-[14px] group-hover:text-seal">{ex.label}</b>
+                      <span className="block text-[12px] leading-snug text-muted-foreground">
+                        {ex.desc} · {sample.pages.length}쪽
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return stacked ? (
     <div className="space-y-8">

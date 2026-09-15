@@ -8,8 +8,9 @@ import { api, useAsync, useAuth, usePageMeta } from '../../lib/backend'
 import type { Incident, Notice, Role } from '../../lib/types'
 import { docNumber, errMsg, fmtDate } from '../../lib/util'
 import { Applications, BambooAdmin, CasesAdmin, CohortsTeams, GuideEditor, InboxAdmin } from './AdminCommunity'
+import { EventsAdmin, MissionsAdmin, MpcDuty, PlayModeration } from './AdminPlay'
 
-type Tab = 'apply' | 'invites' | 'review' | 'roster' | 'teams' | 'members' | 'cases' | 'bamboo' | 'inbox' | 'notices' | 'incidents' | 'alert' | 'rules' | 'guide'
+type Tab = 'apply' | 'invites' | 'review' | 'roster' | 'teams' | 'members' | 'events' | 'missions' | 'play' | 'mpc' | 'cases' | 'bamboo' | 'inbox' | 'notices' | 'incidents' | 'alert' | 'rules' | 'guide'
 
 export default function Admin() {
   usePageMeta('관리부 콘솔')
@@ -35,7 +36,7 @@ export default function Admin() {
           <p className="text-[13px] text-muted-foreground">운영자 전용</p>
           <h2 className="title-serif text-[30px] font-bold">관리부 콘솔</h2>
         </div>
-        <p className="max-w-md text-[13px] text-muted-foreground">편입 신청 심사부터 등록증 · 팀 배치 · 조사 · 대나무숲 · 문의 · 공지 · 게이트 · 안내 문서까지 관리합니다.</p>
+        <p className="max-w-md text-[13px] text-muted-foreground">편입 심사 · 등록증 · 팀 배치 · 특별 훈련 · 의뢰 · 교신과 무전 · 조사 · 대나무숲 · 문의 · 공지 · 게이트 · 안내 문서를 관리합니다.</p>
       </div>
       <Tabs
         value={tab}
@@ -47,6 +48,10 @@ export default function Admin() {
           { value: 'roster', label: '명부 관리', count: chars.data?.length },
           { value: 'teams', label: '기수 · 팀' },
           { value: 'members', label: '요원 권한' },
+          { value: 'events', label: '특별 훈련' },
+          { value: 'missions', label: '의뢰함' },
+          { value: 'play', label: '교신 · 무전' },
+          { value: 'mpc', label: 'MPC · 휴직' },
           { value: 'cases', label: '조사' },
           { value: 'bamboo', label: '대나무숲' },
           { value: 'inbox', label: '문의함', count: (inbox.data ?? []).filter((i) => !i.reply).length },
@@ -64,6 +69,10 @@ export default function Admin() {
         {tab === 'roster' && <Roster chars={chars} />}
         {tab === 'teams' && <CohortsTeams />}
         {tab === 'members' && <Members />}
+        {tab === 'events' && <EventsAdmin />}
+        {tab === 'missions' && <MissionsAdmin />}
+        {tab === 'play' && <PlayModeration />}
+        {tab === 'mpc' && <MpcDuty />}
         {tab === 'cases' && <CasesAdmin />}
         {tab === 'bamboo' && <BambooAdmin />}
         {tab === 'inbox' && <InboxAdmin />}

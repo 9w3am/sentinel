@@ -79,7 +79,7 @@ function PageView({ page, index, doc, edit }: { page: Page; index: number; doc: 
       {page.blocks.map((b) => (
         <BlockShell key={b.id} b={b} editing={!!edit} selected={!!edit && edit.page === index && edit.block === b.id} onPick={edit ? () => edit.onBlock(index, b.id) : undefined} />
       ))}
-      {edit && page.blocks.length === 0 && <p className="pdx-empty">비어 있는 페이지입니다. 왼쪽 '칸'에서 칸을 추가하세요.</p>}
+      {edit && page.blocks.length === 0 && <p className="pdx-empty">비어 있는 페이지입니다. 삽입 메뉴나 '칸' 탭에서 칸을 추가하세요.</p>}
     </div>
   )
   return (

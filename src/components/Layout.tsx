@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { ALERT_LEVELS, WORLD } from '../config/world'
 import { api, useAsync, useAuth } from '../lib/backend'
@@ -20,6 +20,7 @@ const GUIDE_LINKS = [
   { to: '/guide', label: '커뮤 안내' },
   { to: '/apply', label: '편입 신청서' },
   { to: '/apply/check', label: '결과 조회' },
+  { to: '/profile-examples', label: '프로필 문서 예시' },
 ]
 
 export interface SiteCtx {
@@ -251,15 +252,35 @@ function Footer() {
 }
 
 // ── 집무실 (로그인 필요)
-const OFFICE_NAV = [
-  { to: '/office', label: '개요', end: true },
-  { to: '/office/cards', label: '내 등록증', end: false },
-  { to: '/office/board', label: '내부 게시판', end: false },
-  { to: '/office/bamboo', label: '대나무숲', end: false },
-  { to: '/office/cases', label: '조사', end: false },
-  { to: '/office/bonds', label: '결속 관계', end: false },
-  { to: '/office/matching', label: '매칭률 조회', end: false },
-  { to: '/office/inbox', label: '문의함', end: false },
+const OFFICE_NAV: { group: string; items: { to: string; label: string; end: boolean }[] }[] = [
+  {
+    group: '요원',
+    items: [
+      { to: '/office', label: '개요', end: true },
+      { to: '/office/cards', label: '내 등록증', end: false },
+      { to: '/office/bonds', label: '결속 관계', end: false },
+      { to: '/registry/map', label: '결속 관계도', end: false },
+      { to: '/office/matching', label: '매칭률', end: false },
+    ],
+  },
+  {
+    group: '러닝',
+    items: [
+      { to: '/office/threads', label: '교신 기록', end: false },
+      { to: '/office/radio', label: '상황실 무전', end: false },
+      { to: '/office/missions', label: '의뢰함', end: false },
+      { to: '/office/training', label: '특별 훈련', end: false },
+      { to: '/office/cases', label: '조사', end: false },
+    ],
+  },
+  {
+    group: '게시판',
+    items: [
+      { to: '/office/board', label: '내부 게시판', end: false },
+      { to: '/office/bamboo', label: '대나무숲', end: false },
+      { to: '/office/inbox', label: '문의함', end: false },
+    ],
+  },
 ]
 
 export function OfficeLayout() {
@@ -268,6 +289,12 @@ export function OfficeLayout() {
   const navigate = useNavigate()
   const ctx = useSiteContext()
   const badges = useOfficeBadges()
+  const navRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const nav = navRef.current
+    const el = nav?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (nav && el) nav.scrollLeft = el.offsetLeft - nav.clientWidth / 2 + el.clientWidth / 2
+  }, [loc.pathname, session?.role])
 
   const signOut = async () => {
     await api.signOut()
@@ -290,15 +317,15 @@ export function OfficeLayout() {
       </div>
     )
 
-  const items = session.role === 'admin' ? [...OFFICE_NAV, { to: '/office/admin', label: '관리부 콘솔', end: false }] : OFFICE_NAV
+  const groups = session.role === 'admin' ? [...OFFICE_NAV, { group: '운영', items: [{ to: '/office/admin', label: '관리부 콘솔', end: false }] }] : OFFICE_NAV
 
   return (
     <>
       <section className="border-b border-rule">
         <div className={cx(WRAP, 'flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pt-8')}>
-          <div className="pb-5">
+          <div className="min-w-0 pb-5">
             <p className="text-[13px] text-muted-foreground">집무실</p>
-            <h1 className="mt-1 text-[36px] font-black leading-none tracking-[-0.04em] sm:text-[44px]">
+            <h1 className="mt-1 max-w-[calc(100vw-40px)] truncate pb-1 text-[36px] font-black leading-none tracking-[-0.04em] sm:max-w-[640px] sm:text-[44px]" title={session.displayName}>
               {session.displayName}
               <span className="ml-2 text-[0.45em] font-medium tracking-normal text-muted-foreground">요원</span>
             </h1>
@@ -310,20 +337,25 @@ export function OfficeLayout() {
             </button>
           </div>
         </div>
-        <nav className={cx(WRAP, 'flex gap-0.5 overflow-x-auto pb-3')} aria-label="집무실 메뉴">
-          {items.map((n) => {
-            const count = n.to === '/office/bonds' ? badges.bonds : n.to === '/office/cards' ? badges.rejected : n.to === '/office/admin' ? badges.admin : 0
-            return (
-              <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('tab shrink-0', n.to === '/office/admin' && !isActive && 'text-seal')}>
-                {({ isActive }) => (
-                  <span aria-current={isActive ? 'page' : undefined} className={cx('-mx-3 -my-1.5 flex items-center gap-1.5 px-3 py-1.5', isActive && 'bg-foreground font-bold text-background')}>
-                    {n.label}
-                    <Badge n={count} tone={n.to === '/office/cards' ? 'danger' : 'seal'} />
-                  </span>
-                )}
-              </NavLink>
-            )
-          })}
+        <nav ref={navRef} className={cx(WRAP, 'no-scrollbar relative flex gap-x-5 overflow-x-auto pb-3 lg:flex-wrap lg:gap-y-2')} aria-label="집무실 메뉴">
+          {groups.map((g) => (
+            <div key={g.group} className="flex shrink-0 items-center gap-0.5">
+              <span className="mr-1.5 border-r border-rule pr-2 text-[11px] font-bold tracking-[0.12em] text-muted-foreground">{g.group}</span>
+              {g.items.map((n) => {
+                const count = n.to === '/office/bonds' ? badges.bonds : n.to === '/office/cards' ? badges.rejected : n.to === '/office/admin' ? badges.admin : 0
+                return (
+                  <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('tab shrink-0', n.to === '/office/admin' && !isActive && 'text-seal')}>
+                    {({ isActive }) => (
+                      <span aria-current={isActive ? 'page' : undefined} className={cx('-mx-3 -my-1.5 flex items-center gap-1.5 px-3 py-1.5', isActive && 'bg-foreground font-bold text-background')}>
+                        {n.label}
+                        <Badge n={count} tone={n.to === '/office/cards' ? 'danger' : 'seal'} />
+                      </span>
+                    )}
+                  </NavLink>
+                )
+              })}
+            </div>
+          ))}
         </nav>
       </section>
       <div className={cx(WRAP, 'py-10')}>

@@ -8,7 +8,7 @@ import { errMsg, fmtDate } from '../../lib/util'
 export default function Inbox() {
   usePageMeta('운영진 문의함')
   const mine = useAsync(() => api.listMyInbox(), [])
-  const [category, setCategory] = useState<InboxCategory>('question')
+  const [category, setCategory] = useState<InboxCategory>(() => (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('c') as InboxCategory) || 'question')
   const [anonymous, setAnonymous] = useState(true)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')

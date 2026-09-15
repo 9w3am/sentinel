@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Observer } from '../components/Observer'
 import { parseProfileDoc } from '../components/ProfileDoc'
 import { TeamLabel } from '../components/TeamMark'
 import { saveElementAsPng } from '../lib/exportImage'
@@ -176,7 +177,7 @@ export default function RegistryDetail() {
           </Link>
         ) : (
           canManage && (
-            <Link to={`/office/cards/${c.id}/edit`} className="btn btn-sm mr-auto">
+            <Link to={`/studio/card/${c.id}`} className="btn btn-sm mr-auto">
               프로필 문서 꾸미기
             </Link>
           )
@@ -202,6 +203,8 @@ export default function RegistryDetail() {
           {saving ? '만드는 중…' : '이미지로 저장'}
         </button>
       </div>
+
+      {approved && <Observer c={c} canManage={canManage} />}
 
       <div className="mx-auto mt-10 grid max-w-4xl gap-12 lg:grid-cols-2">
         <div>

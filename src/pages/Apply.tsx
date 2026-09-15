@@ -1,6 +1,8 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ProfileDocEditor, PROFILE_DOC_BYTES, docBytes, emptyDoc, isEmptyDoc, type ProfileDoc } from '../components/ProfileDoc'
+import { PROFILE_DOC_BYTES, docBytes, emptyDoc, isEmptyDoc, type ProfileDoc } from '../components/ProfileDoc'
+import { DocSlot } from '../components/profile/DocSlot'
+import { clearDraft, loadDraft, saveDraft, setDraftName, useDraftSync } from '../components/profile/draft'
 import { Emblem, Empty, ErrorBox, Loading, PageTitle, Pill, Segmented, WRAP, copyText, cx } from '../components/ui'
 import { APPLY_FREQ, APPLY_WANTS, GRADE_VALUES, KINDS, TEAM_ROLES, WORLD, cohortStatusLabel } from '../config/world'
 import { CONFIRM_PHRASE } from '../config/guide'
@@ -29,14 +31,15 @@ export default function Apply() {
 
   const [f, setF] = useState({ nick: '', contact: '', name: '', kind: 'sentinel', grade: 'C', age: '', one_line: '', keywords: '', ability: '', background: '', role: '상관없음', freq: APPLY_FREQ[1], message: '', secret: '', qna: '', pair: '', confirm: '' })
   const [wants, setWants] = useState<string[]>([])
-  const [doc, setDoc] = useState<ProfileDoc>(emptyDoc)
-  const [docOpen, setDocOpen] = useState(false)
+  const [doc, setDoc] = useState<ProfileDoc>(() => loadDraft('apply')?.doc ?? emptyDoc())
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<unknown>(null)
   const [done, setDone] = useState<{ receipt: string; pin: string; cohort: number } | null>(null)
   const [copied, setCopied] = useState(false)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
+  useDraftSync('apply', setDoc)
+  useEffect(() => setDraftName('apply', f.name), [f.name])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -51,6 +54,8 @@ export default function Apply() {
     try {
       const { nick, contact, ...rest } = f
       const r = await api.submitApplication({ owner_nick: nick, contact, answers: { ...rest, wants, ...(withDoc ? { doc: JSON.stringify(doc) } : {}) } })
+      if (withDoc) saveDraft('card:new', doc, f.name)
+      clearDraft('apply')
       setDone({ ...r, cohort: open.no })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e) {
@@ -207,16 +212,8 @@ export default function Apply() {
               </Part>
 
               <Part no="03" title="프로필 문서 (선택)" desc="직접 꾸민 캐릭터 문서를 같이 낼 수 있습니다. 운영진이 신청서와 함께 봅니다.">
-                {docOpen ? (
-                  <>
-                    <ProfileDocEditor value={doc} onChange={setDoc} name={f.name} />
-                    <p className="border-l-2 border-seal pl-3 text-[13.5px] text-muted-foreground">합격 뒤 등록증에 옮기려면 '코드 복사'로 코드를 따로 저장해 두세요.</p>
-                  </>
-                ) : (
-                  <button type="button" className="btn" onClick={() => setDocOpen(true)}>
-                    프로필 문서 꾸미기
-                  </button>
-                )}
+                <DocSlot doc={doc} draftKey="apply" name={f.name} onChange={setDoc} />
+                <p className="border-l-2 border-seal pl-3 text-[13.5px] text-muted-foreground">꾸민 문서는 이 브라우저에 자동 저장됩니다. 합격 뒤 같은 브라우저에서 등록증을 만들면 그대로 들어가요. 다른 기기라면 꾸미기 창의 '파일 → 코드 복사'로 챙겨 두세요.</p>
               </Part>
 
               <Part no="04" title="희망 사항" desc="팀 배치에 참고합니다.">

@@ -230,7 +230,7 @@ export interface AnonAdminRow {
 }
 
 // ── 운영진 문의함
-export type InboxCategory = 'question' | 'suggestion' | 'report' | 'break' | 'etc'
+export type InboxCategory = 'question' | 'suggestion' | 'report' | 'investigate' | 'break' | 'etc'
 
 export interface InboxItem {
   id: string

@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, Suspense } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { OfficeLayout, SiteLayout } from './components/Layout'
 import { AuthProvider } from './lib/backend'
@@ -18,6 +18,8 @@ const NoticeDetail = lazy(() => import('./pages/Notices').then((m) => ({ default
 const Registry = lazy(() => import('./pages/Registry'))
 const RegistryDetail = lazy(() => import('./pages/RegistryDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
+const ProfileExamples = lazy(() => import('./pages/ProfileExamples'))
+const Studio = lazy(() => import('./pages/Studio'))
 const RegistryMap = lazy(() => import('./pages/RegistryMap'))
 const Rules = lazy(() => import('./pages/Rules'))
 const System = lazy(() => import('./pages/System'))
@@ -38,12 +40,36 @@ const Inbox = lazy(() => import('./pages/office/Inbox'))
 const Matching = lazy(() => import('./pages/office/Matching'))
 const MyCards = lazy(() => import('./pages/office/MyCards'))
 const Office = lazy(() => import('./pages/office/Office'))
+const ThreadList = lazy(() => import('./pages/office/Threads').then((m) => ({ default: m.ThreadList })))
+const ThreadNew = lazy(() => import('./pages/office/Threads').then((m) => ({ default: m.ThreadNew })))
+const ThreadDetail = lazy(() => import('./pages/office/Threads').then((m) => ({ default: m.ThreadDetail })))
+const Radio = lazy(() => import('./pages/office/Radio').then((m) => ({ default: m.Radio })))
+const TrainingList = lazy(() => import('./pages/office/Training').then((m) => ({ default: m.TrainingList })))
+const TrainingDetail = lazy(() => import('./pages/office/Training').then((m) => ({ default: m.TrainingDetail })))
+const MissionList = lazy(() => import('./pages/office/Missions').then((m) => ({ default: m.MissionList })))
+const MissionDetail = lazy(() => import('./pages/office/Missions').then((m) => ({ default: m.MissionDetail })))
 
 export default function App() {
   return (
     <HashRouter>
       <AuthProvider>
         <Routes>
+          <Route
+            path="studio/apply"
+            element={
+              <Suspense fallback={null}>
+                <Studio mode="apply" />
+              </Suspense>
+            }
+          />
+          <Route
+            path="studio/card/:id"
+            element={
+              <Suspense fallback={null}>
+                <Studio mode="card" />
+              </Suspense>
+            }
+          />
           <Route element={<SiteLayout />}>
             <Route index element={<Home />} />
             <Route path="about" element={<About />} />
@@ -64,10 +90,19 @@ export default function App() {
             <Route path="guide/:slug" element={<Guide />} />
             <Route path="apply" element={<Apply />} />
             <Route path="apply/check" element={<ApplyCheck />} />
+            <Route path="profile-examples" element={<ProfileExamples />} />
             <Route path="auth" element={<AuthPage />} />
             <Route path="office" element={<OfficeLayout />}>
               <Route index element={<Office />} />
               <Route path="cards" element={<MyCards />} />
+              <Route path="threads" element={<ThreadList />} />
+              <Route path="threads/new" element={<ThreadNew />} />
+              <Route path="threads/:id" element={<ThreadDetail />} />
+              <Route path="radio" element={<Radio />} />
+              <Route path="training" element={<TrainingList />} />
+              <Route path="training/:id" element={<TrainingDetail />} />
+              <Route path="missions" element={<MissionList />} />
+              <Route path="missions/:id" element={<MissionDetail />} />
               <Route path="cards/new" element={<CardForm />} />
               <Route path="cards/:id/edit" element={<CardForm />} />
               <Route path="board" element={<BoardList />} />

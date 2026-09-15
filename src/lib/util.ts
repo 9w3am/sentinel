@@ -114,6 +114,12 @@ export function errMsg(e: unknown) {
   if (/APPROACH_KIND/.test(raw)) return '이 조사 방법은 해당 구분의 요원만 쓸 수 있습니다. 감각 탐지는 센티넬, 정신 감응은 가이드만 가능합니다.'
   if (/ALREADY_INVESTIGATED/.test(raw)) return '이 등록증으로 같은 대상을 같은 방법으로 이미 조사했습니다. 방법을 바꿔 보세요.'
   if (/CASE_CLOSED/.test(raw)) return '종결된 사건입니다.'
+  if (/PLAY_NOT_READY/.test(raw)) return '이 기능은 아직 준비 중입니다. 관리부가 데이터베이스 설정(005)을 마치면 쓸 수 있습니다.'
+  if (/THREAD_CLOSED/.test(raw)) return '닫힌 교신입니다. 더 이어 쓸 수 없습니다.'
+  if (/THREAD_MEMBERS_ONLY|thread_posts.*row-level/i.test(raw)) return '참여자로 지정된 캐릭터만 이어 쓸 수 있는 교신입니다.'
+  if (/EVENT_CLOSED/.test(raw)) return '참가 접수가 끝난 훈련입니다.'
+  if (/MISSION_CLOSED/.test(raw)) return '마감된 의뢰입니다.'
+  if (/ALREADY_RUN/.test(raw)) return '이 캐릭터는 이미 이 의뢰를 수행했습니다.'
   if (/NOT_FOUND/.test(raw)) return '찾을 수 없습니다. 삭제되었거나 주소가 바뀌었습니다.'
   if (/case_answers/i.test(raw) && /row-level|policy/i.test(raw)) return '승인된 내 등록증으로만, 사건이 열려 있을 때만 답을 낼 수 있습니다.'
   return raw

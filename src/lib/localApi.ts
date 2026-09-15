@@ -438,7 +438,8 @@ export function createLocalApi(): Api {
         const c = db.characters.find((x) => x.id === input.id)
         need(!!c && (c.owner_id === me() || isAdmin()))
         const contentKeys = ['name', 'codename', 'kind', 'grade', 'affiliation', 'avatar_url', 'details'] as const
-        const changed = contentKeys.some((k) => JSON.stringify(c![k]) !== JSON.stringify(fields[k]))
+        const strip = (k: string, v: unknown) => (k === 'details' && v && typeof v === 'object' ? { ...(v as Record<string, string>), profile_doc: undefined } : v)
+        const changed = contentKeys.some((k) => JSON.stringify(strip(k, c![k])) !== JSON.stringify(strip(k, fields[k])))
         Object.assign(c!, fields, { updated_at: now() })
         if (changed && !isAdmin()) {
           c!.status = 'pending'
