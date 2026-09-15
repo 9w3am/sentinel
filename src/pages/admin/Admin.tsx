@@ -420,7 +420,7 @@ function Notices() {
             <span className="form-label">구분</span>
             <select className="field w-auto" value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value as Notice['level'] })}>
               <option value="normal">일반</option>
-              <option value="warning">주의</option>
+              <option value="warning">경보</option>
               <option value="critical">긴급</option>
             </select>
           </div>
@@ -457,7 +457,7 @@ function Notices() {
               </p>
               <p className="flex items-center gap-1.5 truncate text-[15px]">
                 {n.pinned && <Pill tone="primary" solid>고정</Pill>}
-                {n.level !== 'normal' && <Pill tone={n.level === 'critical' ? 'seal' : 'warn'}>{n.level === 'critical' ? '긴급' : '주의'}</Pill>}
+                {n.level !== 'normal' && <Pill tone={n.level === 'critical' ? 'danger' : 'seal'} solid>{n.level === 'critical' ? '긴급' : '경보'}</Pill>}
                 <span className="truncate">{n.title}</span>
               </p>
             </div>
@@ -490,7 +490,7 @@ const toLocalInput = (iso: string) => {
 
 function Incidents() {
   const incidents = useAsync(() => api.listIncidents(), [])
-  const blank = (): Partial<Incident> & { title: string } => ({ code: `RIFT-${String(Math.floor(Math.random() * 9000) + 1000)}`, title: '', location: '', grade: 'C', status: 'open', body: '', occurred_at: new Date().toISOString() })
+  const blank = (): Partial<Incident> & { title: string } => ({ code: `G-${String(Math.floor(Math.random() * 9000) + 1000)}`, title: '', location: '', grade: 'C', status: 'open', body: '', occurred_at: new Date().toISOString() })
   const [form, setForm] = useState(blank)
   const [err, setErr] = useState<unknown>(null)
 
@@ -575,7 +575,7 @@ function Incidents() {
               </p>
               <p className="truncate text-[15px]">{i.title}</p>
             </div>
-            <Pill tone={i.status === 'open' ? 'seal' : i.status === 'responding' ? 'warn' : 'muted'}>{incidentStatusLabel(i.status)}</Pill>
+            <Pill tone={i.status === 'open' ? 'danger' : i.status === 'responding' ? 'seal' : 'muted'}>{incidentStatusLabel(i.status)}</Pill>
             <button type="button" className="label-mono hover:text-foreground" onClick={() => setForm({ ...i })}>
               수정
             </button>
@@ -633,7 +633,7 @@ function AlertLevel() {
           >
             <AlertSegments level={a.level} cell="h-1.5 w-3" />
             <p className="title-serif mt-2 text-[20px] font-bold" style={{ color: alertColor(a.level) }}>
-              {a.level}급 {a.name}
+              {a.level}단계 {a.name}
             </p>
             <p className="font-mono text-[10px] text-muted-foreground">{a.en}</p>
           </button>
@@ -692,7 +692,7 @@ function RulesEditor() {
           <label className="form-label" htmlFor="r-body">
             본문
           </label>
-          <textarea id="r-body" className="field min-h-[480px] font-mono text-[14px] leading-[1.8]" value={b} onChange={(e) => setBody(e.target.value)} />
+          <textarea id="r-body" className="field min-h-[480px] text-[15px] leading-[1.8]" value={b} onChange={(e) => setBody(e.target.value)} />
         </div>
         {err ? <ErrorBox error={err} /> : null}
         <div className="flex gap-2">
@@ -737,7 +737,7 @@ function GateRosters({ incidents, reload }: { incidents: Incident[]; reload: () 
 
   return (
     <div className="lg:col-span-2">
-      <h3 className="mb-3 border-b-2 border-foreground pb-2 text-[20px] font-black tracking-[-0.03em]">게이트 참여 명단</h3>
+      <h3 className="sechead mb-3 border-b-2 border-foreground pb-2 text-[20px] font-black tracking-[-0.03em]">게이트 참여 명단</h3>
       <div className="overflow-x-auto">
         <table className="table-doc min-w-[680px]">
           <thead>

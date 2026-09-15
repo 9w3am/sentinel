@@ -28,7 +28,7 @@ export const kindColor = (k: string) =>
 export function Emblem({ size = 36, className, style }: { size?: number; ring?: boolean; className?: string; style?: CSSProperties }) {
   return (
     <svg viewBox="0 0 40 40" width={size} height={size} className={className} style={style} aria-hidden="true">
-      <rect width="40" height="40" fill="var(--seal)" />
+      <rect width="40" height="40" rx="9" fill="var(--seal)" />
       <path d="M6 20 C11 12 29 12 34 20 C29 28 11 28 6 20Z" fill="none" stroke="#0f0f0d" strokeWidth="3" />
       <rect x="16.5" y="16.5" width="7" height="7" fill="#0f0f0d" />
     </svg>
@@ -243,7 +243,7 @@ export function PageTitle({ title, desc, crumbs = [], children }: { en?: string;
 
 export function SectionHead({ title, action, className }: { no?: string; title: string; en?: string; action?: ReactNode; className?: string }) {
   return (
-    <div className={cx('mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b-2 border-foreground pb-3', className)}>
+    <div className={cx('sechead mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b-2 border-foreground pb-3', className)}>
       <h2 className="text-[24px] font-black tracking-[-0.03em]">{title}</h2>
       {action}
     </div>

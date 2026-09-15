@@ -57,7 +57,7 @@ export default function MyCards() {
                 <th className="w-24">구분</th>
                 <th className="w-16">등급</th>
                 <th className="w-48">상태</th>
-                <th className="w-24">갱신일</th>
+                <th className="w-28">갱신일</th>
                 <th className="w-40 text-right">관리</th>
               </tr>
             </thead>
@@ -87,7 +87,7 @@ export default function MyCards() {
                         )}
                       </span>
                     </td>
-                    <td className="font-mono text-[13px] text-muted-foreground">{shortDate(c.updated_at)}</td>
+                    <td className="whitespace-nowrap font-mono text-[13px] text-muted-foreground">{shortDate(c.updated_at)}</td>
                     <td className="text-right text-[13px]">
                       <span className="inline-flex gap-3">
                         <Link to={`/registry/${c.id}`} className="hover:text-seal">

@@ -313,6 +313,11 @@ body::after {
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
+  /* 섹션 제목 밑줄 바로 아래 표는 윗줄을 겹쳐 그리지 않는다 */
+  .sechead + .table-doc th,
+  .sechead + div > .table-doc th {
+    border-top-width: 0;
+  }
   .table-doc td {
     padding: 14px 10px;
     border-bottom: 1px solid var(--border);
