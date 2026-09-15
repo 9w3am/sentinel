@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { TeamLabel } from '../components/TeamMark'
 import { saveElementAsPng } from '../lib/exportImage'
 import { Avatar, Emblem, Empty, ErrorBox, FieldRow, GradeBadge, Icon, KindBadge, Loading, Pill, SectionHead, StatusPill, WRAP, cx } from '../components/ui'
 import { DETAIL_FIELDS, RELATION_TONE, WORLD, gradeLabel, kindLabel } from '../config/world'
@@ -105,8 +106,10 @@ export default function RegistryDetail() {
                   </span>
                 </FieldRow>
                 <FieldRow label="소속">{c.affiliation}</FieldRow>
+                <FieldRow label="팀">{c.team_id ? <TeamLabel teamId={c.team_id} role={c.team_role} /> : null}</FieldRow>
+                <FieldRow label="기수">{c.cohort_no ? `제${c.cohort_no}기` : null}</FieldRow>
                 {session?.role && <FieldRow label="관리인">{c.owner_name}</FieldRow>}
-                <FillerRows count={basic.length - (session?.role ? 6 : 5)} />
+                <FillerRows count={basic.length - (session?.role ? 8 : 7)} />
               </div>
               <div className="border-t border-rule sm:border-t-0">
                 {basic.map((f) => (
@@ -114,7 +117,7 @@ export default function RegistryDetail() {
                     {d[f.key]}
                   </FieldRow>
                 ))}
-                <FillerRows count={(session?.role ? 6 : 5) - basic.length} />
+                <FillerRows count={(session?.role ? 8 : 7) - basic.length} />
               </div>
             </div>
           </div>

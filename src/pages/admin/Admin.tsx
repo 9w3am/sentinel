@@ -7,17 +7,21 @@ import { ALERT_LEVELS, DEFAULT_RULES, GRADE_VALUES, INCIDENT_STATUS, incidentSta
 import { api, useAsync, useAuth, usePageMeta } from '../../lib/backend'
 import type { Incident, Notice, Role } from '../../lib/types'
 import { docNumber, errMsg, fmtDate } from '../../lib/util'
+import { Applications, BambooAdmin, CasesAdmin, CohortsTeams, GuideEditor, InboxAdmin } from './AdminCommunity'
 
-type Tab = 'invites' | 'review' | 'roster' | 'members' | 'notices' | 'incidents' | 'alert' | 'rules'
+type Tab = 'apply' | 'invites' | 'review' | 'roster' | 'teams' | 'members' | 'cases' | 'bamboo' | 'inbox' | 'notices' | 'incidents' | 'alert' | 'rules' | 'guide'
 
 export default function Admin() {
   usePageMeta('관리부 콘솔')
   const { session } = useAuth()
   const [params] = useSearchParams()
-  const [tab, setTab] = useState<Tab>((params.get('tab') as Tab) || 'invites')
-  const chars = useAsync(() => (session?.role === 'admin' ? api.listAllCharacters() : Promise.resolve([])), [session?.role])
+  const [tab, setTab] = useState<Tab>((params.get('tab') as Tab) || 'apply')
+  const isAdmin = session?.role === 'admin'
+  const chars = useAsync(() => (isAdmin ? api.listAllCharacters() : Promise.resolve([])), [isAdmin])
+  const apps = useAsync(() => (isAdmin ? api.listApplications() : Promise.resolve([])), [isAdmin, tab])
+  const inbox = useAsync(() => (isAdmin ? api.listInboxAdmin() : Promise.resolve([])), [isAdmin, tab])
 
-  if (session?.role !== 'admin')
+  if (!isAdmin)
     return (
       <Empty title="관리부 권한이 없습니다">관리부 계정만 볼 수 있는 화면입니다.</Empty>
     )
@@ -31,31 +35,43 @@ export default function Admin() {
           <p className="text-[13px] text-muted-foreground">운영자 전용</p>
           <h2 className="title-serif text-[30px] font-bold">관리부 콘솔</h2>
         </div>
-        <p className="max-w-md text-[13px] text-muted-foreground">초대 코드(편입 인가 번호) 발급, 캐릭터 등록증 심사, 멤버 권한, 공지 · 이벤트(게이트) · 경보 단계를 관리합니다.</p>
+        <p className="max-w-md text-[13px] text-muted-foreground">편입 신청 심사부터 등록증 · 팀 배치 · 조사 · 대나무숲 · 문의 · 공지 · 게이트 · 안내 문서까지 관리합니다.</p>
       </div>
       <Tabs
         value={tab}
         onChange={setTab}
         items={[
-          { value: 'invites', label: '편입 인가 번호' },
+          { value: 'apply', label: '편입 신청', count: (apps.data ?? []).filter((a) => a.status === 'submitted').length },
+          { value: 'invites', label: '인가 번호' },
           { value: 'review', label: '등록 심사', count: pendingCount },
           { value: 'roster', label: '명부 관리', count: chars.data?.length },
+          { value: 'teams', label: '기수 · 팀' },
           { value: 'members', label: '요원 권한' },
+          { value: 'cases', label: '조사' },
+          { value: 'bamboo', label: '대나무숲' },
+          { value: 'inbox', label: '문의함', count: (inbox.data ?? []).filter((i) => !i.reply).length },
           { value: 'notices', label: '알림마당' },
           { value: 'incidents', label: '게이트 기록' },
           { value: 'alert', label: '경보 단계' },
           { value: 'rules', label: '협회 규정' },
+          { value: 'guide', label: '안내 문서' },
         ]}
       />
       <div className="pt-8">
+        {tab === 'apply' && <Applications />}
         {tab === 'invites' && <Invites />}
         {tab === 'review' && <Review chars={chars} />}
         {tab === 'roster' && <Roster chars={chars} />}
+        {tab === 'teams' && <CohortsTeams />}
         {tab === 'members' && <Members />}
+        {tab === 'cases' && <CasesAdmin />}
+        {tab === 'bamboo' && <BambooAdmin />}
+        {tab === 'inbox' && <InboxAdmin />}
         {tab === 'notices' && <Notices />}
         {tab === 'incidents' && <Incidents />}
         {tab === 'alert' && <AlertLevel />}
         {tab === 'rules' && <RulesEditor />}
+        {tab === 'guide' && <GuideEditor />}
       </div>
     </div>
   )

@@ -340,3 +340,32 @@ body::after {
     font-weight: 700;
   }
 }
+
+/* 상태창 상자: 커뮤 안내 문서 · 조사 결과 */
+.sys-window {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--seal) 45%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--seal) 7%, transparent), transparent 70%), var(--card);
+  padding: 12px 16px;
+}
+.sys-window::before,
+.sys-window::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 0 solid var(--seal);
+  pointer-events: none;
+}
+.sys-window::before {
+  left: -1px;
+  top: -1px;
+  border-left-width: 2px;
+  border-top-width: 2px;
+}
+.sys-window::after {
+  right: -1px;
+  bottom: -1px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}

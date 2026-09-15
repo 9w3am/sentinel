@@ -1,5 +1,33 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Api, Character, CharacterBrief, Comment, Incident, IncidentEntry, Invite, Member, Notice, Post, Relation, Role, Session, Settings, SitePage } from './types'
+import type {
+  AnonAdminRow,
+  AnonComment,
+  AnonPost,
+  Api,
+  Application,
+  Case,
+  CaseAnswer,
+  CaseClue,
+  CaseFinding,
+  CaseTarget,
+  Character,
+  CharacterBrief,
+  Cohort,
+  Comment,
+  Incident,
+  IncidentEntry,
+  InboxItem,
+  Invite,
+  Member,
+  Notice,
+  Post,
+  Relation,
+  Role,
+  Session,
+  Settings,
+  SitePage,
+  Team,
+} from './types'
 import { randomCode, uid } from './util'
 
 const BRIEF = 'id,name,codename,kind,grade,avatar_url'
@@ -13,10 +41,18 @@ export function createSupabaseApi(url: string, key: string): Api {
     return r.data as T
   }
 
-  // 002 마이그레이션 전이면 테이블·컬럼이 없다 → 조용히 빈 값으로 처리
-  const missingTable = (e: unknown) => {
+  // 마이그레이션(002 · 003) 전이면 테이블 · 컬럼 · 함수가 없다 → 조용히 빈 값으로 처리
+  const missing = (e: unknown) => {
     const code = (e as { code?: string } | null)?.code
-    return code === 'PGRST205' || code === 'PGRST204' || code === '42P01' || code === '42703'
+    return code === 'PGRST205' || code === 'PGRST204' || code === 'PGRST202' || code === '42P01' || code === '42703' || code === '42883'
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function orEmpty<T = any>(r: { data?: unknown; error: unknown }, empty: T): T {
+    if (r.error) {
+      if (missing(r.error)) return empty
+      throw r.error
+    }
+    return (r.data ?? empty) as T
   }
 
   async function currentUid() {
@@ -118,7 +154,7 @@ export function createSupabaseApi(url: string, key: string): Api {
       must(await sb.from('profiles').update({ display_name: name.trim() }).eq('id', id))
     },
 
-    // ── 설정·고시·균열
+    // ── 설정·고시·게이트
     async getSettings(): Promise<Settings> {
       const { data } = await sb.from('site_settings').select('alert_level,alert_message,updated_at').eq('id', 1).maybeSingle()
       return data ?? { alert_level: 1, alert_message: null }
@@ -165,12 +201,7 @@ export function createSupabaseApi(url: string, key: string): Api {
 
     // ── 고정 문서
     async getPage(slug) {
-      const { data, error } = await sb.from('site_pages').select('*').eq('slug', slug).maybeSingle()
-      if (error) {
-        if (missingTable(error)) return null
-        throw error
-      }
-      return data as SitePage | null
+      return orEmpty(await sb.from('site_pages').select('*').eq('slug', slug).maybeSingle(), null) as SitePage | null
     },
     async savePage(p) {
       must(await sb.from('site_pages').upsert({ ...p, updated_at: new Date().toISOString() }))
@@ -178,14 +209,12 @@ export function createSupabaseApi(url: string, key: string): Api {
 
     // ── 게이트 참여
     async listEntries(incidentId) {
-      const { data, error } = await sb.from('incident_entries').select('*').eq('incident_id', incidentId).order('created_at')
-      if (error) {
-        if (missingTable(error)) return []
-        throw error
-      }
-      const rows = (data ?? []) as IncidentEntry[]
+      const rows = orEmpty(await sb.from('incident_entries').select('*').eq('incident_id', incidentId).order('created_at'), []) as IncidentEntry[]
       const briefs = await briefMap(rows.map((r) => r.character_id))
       return rows.map((r) => ({ ...r, character: briefs.get(r.character_id) ?? null }))
+    },
+    async listAllEntries() {
+      return orEmpty(await sb.from('incident_entries').select('*').order('created_at', { ascending: false }).limit(2000), []) as IncidentEntry[]
     },
     async joinIncident(incidentId, characterId, note) {
       const me = await requireUid()
@@ -195,12 +224,8 @@ export function createSupabaseApi(url: string, key: string): Api {
       must(await sb.from('incident_entries').delete().eq('id', entryId))
     },
     async listPostsByIncident(incidentId) {
-      const { data, error } = await sb.from('posts').select('*').eq('incident_id', incidentId).order('created_at', { ascending: false })
-      if (error) {
-        if (missingTable(error)) return []
-        throw error
-      }
-      return withAuthors((data ?? []) as Post[])
+      const rows = orEmpty(await sb.from('posts').select('*').eq('incident_id', incidentId).order('created_at', { ascending: false }), []) as Post[]
+      return withAuthors(rows)
     },
 
     // ── 등록증
@@ -253,6 +278,9 @@ export function createSupabaseApi(url: string, key: string): Api {
     async setCharacterLock(id, locked) {
       must(await sb.from('characters').update({ locked }).eq('id', id))
     },
+    async assignCharacter(id, patch) {
+      must(await sb.from('characters').update(patch).eq('id', id))
+    },
     async getSecret(characterId) {
       const { data } = await sb.from('character_secrets').select('body').eq('character_id', characterId).maybeSingle()
       return data?.body ?? null
@@ -267,7 +295,82 @@ export function createSupabaseApi(url: string, key: string): Api {
       return sb.storage.from('avatars').getPublicUrl(path).data.publicUrl
     },
 
-    // ── 결속
+    // ── 기수 · 팀
+    async listCohorts() {
+      return orEmpty(await sb.from('cohorts').select('*').order('no'), []) as Cohort[]
+    },
+    async saveCohort(c) {
+      must(await sb.from('cohorts').upsert({ no: c.no, title: c.title.trim(), status: c.status, note: c.note?.trim() || null }))
+    },
+    async deleteCohort(no) {
+      must(await sb.from('cohorts').delete().eq('no', no))
+    },
+    async listTeams() {
+      return orEmpty(await sb.from('teams').select('*').order('sort').order('name'), []) as Team[]
+    },
+    async saveTeam(t) {
+      const row = {
+        name: t.name.trim(),
+        callsign: t.callsign?.trim() || null,
+        color: t.color ?? '#f0c419',
+        motto: t.motto?.trim() || null,
+        description: t.description?.trim() || null,
+        sort: t.sort ?? 0,
+      }
+      if (t.id) must(await sb.from('teams').update(row).eq('id', t.id))
+      else must(await sb.from('teams').insert(row))
+    },
+    async deleteTeam(id) {
+      must(await sb.from('teams').delete().eq('id', id))
+    },
+
+    // ── 편입 신청서
+    async submitApplication(a) {
+      const rows = must(await sb.rpc('submit_application', { p_nick: a.owner_nick, p_contact: a.contact, p_answers: a.answers })) as { out_receipt: string; out_pin: string }[]
+      if (!rows?.[0]) throw new Error('접수하지 못했습니다. 잠시 뒤 다시 시도해 주세요.')
+      return { receipt: rows[0].out_receipt, pin: rows[0].out_pin }
+    },
+    async checkApplication(receipt, pin) {
+      const rows = must(await sb.rpc('check_application', { p_receipt: receipt, p_pin: pin })) as {
+        out_status: Application['status']
+        out_note: string | null
+        out_invite: string | null
+        out_cohort: number | null
+        out_created: string
+      }[]
+      const r = rows?.[0]
+      return r ? { status: r.out_status, result_note: r.out_note, invite_code: r.out_invite, cohort_no: r.out_cohort, created_at: r.out_created } : null
+    },
+    async listApplications() {
+      const rows = orEmpty(await sb.from('applications').select('*, invites(code, used_by)').order('created_at', { ascending: false }), []) as (Application & {
+        invites: { code: string; used_by: string | null } | null
+      })[]
+      return rows.map(({ invites, ...a }) => ({ ...a, invite_code: invites?.code ?? null, invite_used: !!invites?.used_by }))
+    },
+    async decideApplication(id, accept, note) {
+      const app = must(await sb.from('applications').select('owner_nick,cohort_no,invite_id').eq('id', id).single()) as { owner_nick: string; cohort_no: number | null; invite_id: string | null }
+      const decided_at = new Date().toISOString()
+      if (accept) {
+        let inviteId = app.invite_id
+        if (!inviteId) {
+          const me = await requireUid()
+          const inv = must(
+            await sb
+              .from('invites')
+              .insert({ code: randomCode(), note: `제${app.cohort_no ?? '?'}기 합격 · ${app.owner_nick}`, grant_admin: false, created_by: me })
+              .select('id')
+              .single(),
+          )
+          inviteId = inv.id as string
+        }
+        must(await sb.from('applications').update({ status: 'accepted', result_note: note, invite_id: inviteId, decided_at }).eq('id', id))
+      } else {
+        if (app.invite_id) await sb.from('invites').delete().eq('id', app.invite_id).is('used_by', null)
+        must(await sb.from('applications').update({ status: 'rejected', result_note: note, invite_id: null, decided_at }).eq('id', id))
+      }
+    },
+
+    // ── 결속 (선택형 조율)
     async listRelationsOf(characterId) {
       const rows = must(
         await sb
@@ -297,19 +400,19 @@ export function createSupabaseApi(url: string, key: string): Api {
       ) as Relation[]
       return withBriefs(rows)
     },
-    async requestRelation(fromId, toId, kind, description) {
+    async requestRelation(fromId, toId, kind, description, options) {
       const me = await requireUid()
-      must(
-        await sb.from('relations').insert({
-          from_character_id: fromId,
-          to_character_id: toId,
-          kind,
-          description: description.trim() || null,
-          created_by: me,
-        }),
-      )
+      const base = { from_character_id: fromId, to_character_id: toId, kind, description: description.trim() || null, created_by: me }
+      const first = await sb.from('relations').insert((options ? { ...base, options } : base) as Record<string, unknown>)
+      if (first.error && options && missing(first.error)) must(await sb.from('relations').insert(base))
+      else must(first)
     },
-    async respondRelation(id, accept) {
+    async respondRelation(id, accept, allow) {
+      if (allow) {
+        const r = await sb.rpc('respond_relation_opts', { p_id: id, p_accept: accept, p_allow: allow })
+        if (!r.error) return
+        if (!missing(r.error)) throw r.error
+      }
       must(await sb.rpc('respond_relation', { p_id: id, p_accept: accept }))
     },
     async deleteRelation(id) {
@@ -349,6 +452,243 @@ export function createSupabaseApi(url: string, key: string): Api {
     },
     async deleteComment(id) {
       must(await sb.from('comments').delete().eq('id', id))
+    },
+
+    // ── 대나무숲
+    async listAnonPosts() {
+      const rows = orEmpty(await sb.rpc('list_anon_posts'), []) as {
+        out_id: string
+        out_title: string
+        out_preview: string
+        out_dept: string | null
+        out_created: string
+        out_comments: number
+        out_mine: boolean
+        out_hidden: boolean
+      }[]
+      return rows.map(
+        (r): AnonPost => ({
+          id: r.out_id,
+          title: r.out_title,
+          body: r.out_preview,
+          dept: r.out_dept,
+          created_at: r.out_created,
+          comment_count: r.out_comments,
+          is_mine: r.out_mine,
+          hidden: r.out_hidden,
+        }),
+      )
+    },
+    async getAnonPost(id) {
+      const rows = orEmpty(await sb.rpc('get_anon_post', { p_id: id }), []) as {
+        out_id: string
+        out_title: string
+        out_body: string
+        out_dept: string | null
+        out_created: string
+        out_mine: boolean
+        out_hidden: boolean
+      }[]
+      const r = rows[0]
+      return r ? { id: r.out_id, title: r.out_title, body: r.out_body, dept: r.out_dept, created_at: r.out_created, comment_count: 0, is_mine: r.out_mine, hidden: r.out_hidden } : null
+    },
+    async createAnonPost(p) {
+      const me = await requireUid()
+      const row = must(await sb.from('anon_posts').insert({ ...p, title: p.title.trim(), owner_id: me }).select('id').single())
+      return row.id as string
+    },
+    async deleteAnonPost(id) {
+      must(await sb.from('anon_posts').delete().eq('id', id))
+    },
+    async listAnonComments(postId) {
+      const rows = orEmpty(await sb.rpc('list_anon_comments', { p_post: postId }), []) as {
+        out_id: string
+        out_alias: string
+        out_body: string
+        out_created: string
+        out_mine: boolean
+        out_hidden: boolean
+      }[]
+      return rows.map((r): AnonComment => ({ id: r.out_id, alias: r.out_alias, body: r.out_body, created_at: r.out_created, is_mine: r.out_mine, hidden: r.out_hidden }))
+    },
+    async addAnonComment(postId, characterId, body) {
+      const me = await requireUid()
+      must(await sb.from('anon_comments').insert({ post_id: postId, character_id: characterId, body: body.trim(), owner_id: me }))
+    },
+    async deleteAnonComment(id) {
+      must(await sb.from('anon_comments').delete().eq('id', id))
+    },
+    async listAnonAdmin() {
+      const posts = orEmpty(await sb.from('anon_posts').select('*').order('created_at', { ascending: false }).limit(300), []) as {
+        id: string
+        owner_id: string
+        character_id: string
+        title: string
+        body: string
+        hidden: boolean
+        created_at: string
+      }[]
+      const comments = orEmpty(await sb.from('anon_comments').select('*').order('created_at', { ascending: false }).limit(600), []) as {
+        id: string
+        post_id: string
+        owner_id: string
+        character_id: string
+        body: string
+        hidden: boolean
+        created_at: string
+      }[]
+      const all = [...posts, ...comments]
+      const [names, briefs] = await Promise.all([nameMap(all.map((r) => r.owner_id)), briefMap(all.map((r) => r.character_id))])
+      const titles = new Map(posts.map((p) => [p.id, p.title]))
+      const rows: AnonAdminRow[] = [
+        ...posts.map((p) => ({ kind: 'post' as const, id: p.id, post_id: p.id, title: p.title, body: p.body, hidden: p.hidden, created_at: p.created_at, character: briefs.get(p.character_id) ?? null, owner_name: names.get(p.owner_id) ?? '요원' })),
+        ...comments.map((c) => ({ kind: 'comment' as const, id: c.id, post_id: c.post_id, title: titles.get(c.post_id) ?? null, body: c.body, hidden: c.hidden, created_at: c.created_at, character: briefs.get(c.character_id) ?? null, owner_name: names.get(c.owner_id) ?? '요원' })),
+      ]
+      return rows.sort((a, b) => b.created_at.localeCompare(a.created_at))
+    },
+    async setAnonHidden(kind, id, hidden) {
+      must(await sb.from(kind === 'post' ? 'anon_posts' : 'anon_comments').update({ hidden }).eq('id', id))
+    },
+
+    // ── 운영진 문의함
+    async listMyInbox() {
+      const rows = orEmpty(await sb.from('inbox').select('*').order('created_at', { ascending: false }), []) as InboxItem[]
+      return rows.map((r) => ({ ...r, sender: null }))
+    },
+    async sendInbox(i) {
+      const me = await requireUid()
+      must(await sb.from('inbox').insert({ ...i, title: i.title.trim(), owner_id: me }))
+    },
+    async deleteMyInbox(id) {
+      must(await sb.from('inbox').delete().eq('id', id))
+    },
+    async listInboxAdmin() {
+      const rows = orEmpty(await sb.rpc('list_inbox_admin'), []) as {
+        out_id: string
+        out_category: InboxItem['category']
+        out_title: string
+        out_body: string
+        out_anonymous: boolean
+        out_sender: string | null
+        out_reply: string | null
+        out_replied: string | null
+        out_created: string
+      }[]
+      return rows.map(
+        (r): InboxItem => ({
+          id: r.out_id,
+          category: r.out_category,
+          title: r.out_title,
+          body: r.out_body,
+          anonymous: r.out_anonymous,
+          sender: r.out_sender,
+          reply: r.out_reply,
+          replied_at: r.out_replied,
+          created_at: r.out_created,
+        }),
+      )
+    },
+    async replyInbox(id, reply) {
+      must(await sb.rpc('reply_inbox', { p_id: id, p_reply: reply }))
+    },
+    async deleteInboxAdmin(id) {
+      must(await sb.rpc('delete_inbox_admin', { p_id: id }))
+    },
+
+    // ── 조사
+    async listCases() {
+      return orEmpty(await sb.from('cases').select('*').order('created_at', { ascending: false }), []) as Case[]
+    },
+    async getCase(id) {
+      return orEmpty(await sb.from('cases').select('*').eq('id', id).maybeSingle(), null) as Case | null
+    },
+    async listCaseTargets(caseId) {
+      return orEmpty(await sb.from('case_targets').select('*').eq('case_id', caseId).order('sort').order('name'), []) as CaseTarget[]
+    },
+    async investigate(caseId, targetId, approach, characterId) {
+      const rows = must(await sb.rpc('investigate', { p_case: caseId, p_target: targetId, p_approach: approach, p_character: characterId })) as { out_found: boolean; out_body: string | null }[]
+      return { found: !!rows?.[0]?.out_found, body: rows?.[0]?.out_body ?? null }
+    },
+    async listCaseFindings(caseId) {
+      const rows = orEmpty(await sb.rpc('list_case_findings', { p_case: caseId }), []) as {
+        out_id: string
+        out_target: string
+        out_target_name: string
+        out_approach: CaseFinding['approach']
+        out_found: boolean
+        out_clue: string | null
+        out_character: string
+        out_character_name: string
+        out_character_kind: string
+        out_team: string | null
+        out_created: string
+        out_mine: boolean
+      }[]
+      return rows.map(
+        (r): CaseFinding => ({
+          id: r.out_id,
+          target_id: r.out_target,
+          target_name: r.out_target_name,
+          approach: r.out_approach,
+          found: r.out_found,
+          clue: r.out_clue,
+          character_id: r.out_character,
+          character_name: r.out_character_name,
+          character_kind: r.out_character_kind,
+          team_name: r.out_team,
+          created_at: r.out_created,
+          is_mine: r.out_mine,
+        }),
+      )
+    },
+    async listCaseAnswers(caseId) {
+      const me = await currentUid()
+      const rows = orEmpty(await sb.from('case_answers').select('character_id,choice,owner_id').eq('case_id', caseId), []) as { character_id: string; choice: number; owner_id: string }[]
+      return rows.map((r): CaseAnswer => ({ character_id: r.character_id, choice: r.choice, is_mine: r.owner_id === me }))
+    },
+    async answerCase(caseId, characterId, choice) {
+      const me = await requireUid()
+      must(await sb.from('case_answers').upsert({ case_id: caseId, character_id: characterId, choice, owner_id: me }, { onConflict: 'case_id,character_id' }))
+    },
+    async saveCase(c) {
+      const row = {
+        code: c.code.trim(),
+        title: c.title.trim(),
+        briefing: c.briefing ?? '',
+        incident_id: c.incident_id || null,
+        status: c.status ?? 'open',
+        question: c.question?.trim() || null,
+        choices: c.choices ?? [],
+        answer: c.answer ?? null,
+        conclusion: c.conclusion?.trim() || null,
+      }
+      if (c.id) {
+        must(await sb.from('cases').update(row).eq('id', c.id))
+        return c.id
+      }
+      const created = must(await sb.from('cases').insert(row).select('id').single())
+      return created.id as string
+    },
+    async deleteCase(id) {
+      must(await sb.from('cases').delete().eq('id', id))
+    },
+    async saveCaseTarget(t) {
+      const row = { case_id: t.case_id, name: t.name.trim(), detail: t.detail?.trim() || null, sort: t.sort ?? 0 }
+      if (t.id) must(await sb.from('case_targets').update(row).eq('id', t.id))
+      else must(await sb.from('case_targets').insert(row))
+    },
+    async deleteCaseTarget(id) {
+      must(await sb.from('case_targets').delete().eq('id', id))
+    },
+    async listCaseClues(caseId) {
+      return orEmpty(await sb.from('case_clues').select('*').eq('case_id', caseId), []) as CaseClue[]
+    },
+    async saveCaseClue(c) {
+      if (!c.body.trim()) {
+        must(await sb.from('case_clues').delete().eq('target_id', c.target_id).eq('approach', c.approach))
+        return
+      }
+      must(await sb.from('case_clues').upsert({ case_id: c.case_id, target_id: c.target_id, approach: c.approach, body: c.body.trim() }, { onConflict: 'target_id,approach' }))
     },
 
     // ── 관리부

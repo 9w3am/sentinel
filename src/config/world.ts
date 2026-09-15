@@ -125,3 +125,88 @@ export const DEFAULT_RULES = {
 부칙
 이 규정은 누리집 개설일부터 시행한다.`,
 }
+
+// ── 팀
+export const TEAM_ROLES = [
+  { value: '팀장', desc: '팀을 이끈다' },
+  { value: '선봉', desc: '앞에서 싸우는 센티넬' },
+  { value: '앵커', desc: '팀을 붙잡아 두는 가이드' },
+  { value: '관측', desc: '탐지 · 정찰' },
+  { value: '지원', desc: '오퍼레이터 · 의무 · 기술' },
+] as const
+
+export const TEAM_COLORS = ['#f0c419', '#8fb4dc', '#e8892a', '#d8432c', '#7fae7a', '#b9a7e0', '#a5a296']
+
+// ── 기수
+export const COHORT_STATUS = [
+  { value: 'ready', label: '준비 중' },
+  { value: 'recruiting', label: '모집 중' },
+  { value: 'running', label: '활동 중' },
+  { value: 'closed', label: '마감' },
+] as const
+export const cohortStatusLabel = (s: string) => COHORT_STATUS.find((x) => x.value === s)?.label ?? s
+
+// ── 선택형 결속 조율: 대화 없이 체크로 합의한다
+export const RELATION_OPTIONS = [
+  { value: 'mission', label: '함께 임무 로그' },
+  { value: 'daily', label: '일상 로그' },
+  { value: 'past', label: '과거 인연 추가' },
+  { value: 'conflict', label: '갈등 · 다툼' },
+  { value: 'crisis', label: '부상 · 위기 묘사' },
+  { value: 'guiding', label: '가이딩 접촉 묘사' },
+  { value: 'feelings', label: '감정선 발전' },
+  { value: 'cameo', label: '내 로그에 상대 등장' },
+] as const
+export const relationOptionLabel = (v: string) => RELATION_OPTIONS.find((x) => x.value === v)?.label ?? v
+
+export const RELATION_TEMPS = [
+  { value: 'light', label: '가볍게' },
+  { value: 'normal', label: '보통' },
+  { value: 'deep', label: '깊게' },
+] as const
+export const relationTempLabel = (v?: string) => RELATION_TEMPS.find((x) => x.value === v)?.label ?? null
+
+// ── 조사: 주사위 없이 대상 × 방법으로 단서를 찾는다
+export const APPROACHES = [
+  { value: 'sense', label: '감각 탐지', kind: 'sentinel', desc: '센티넬만. 소리 · 냄새 · 흔적을 쫓는다.' },
+  { value: 'psyche', label: '정신 감응', kind: 'guide', desc: '가이드만. 남아 있는 감정과 기억을 읽는다.' },
+  { value: 'records', label: '기록 열람', kind: null, desc: '관측 기록 · 출입 기록 · 보고서를 뒤진다.' },
+  { value: 'interview', label: '탐문', kind: null, desc: '목격자와 관계자에게 묻는다.' },
+  { value: 'search', label: '현장 수색', kind: null, desc: '현장을 직접 뒤진다.' },
+] as const
+export const approachLabel = (v: string) => APPROACHES.find((x) => x.value === v)?.label ?? v
+
+// ── 운영진 문의함
+export const INBOX_CATEGORIES = [
+  { value: 'question', label: '문의' },
+  { value: 'suggestion', label: '건의' },
+  { value: 'report', label: '신고' },
+  { value: 'break', label: '휴식 · 하차' },
+  { value: 'etc', label: '기타' },
+] as const
+export const inboxCategoryLabel = (v: string) => INBOX_CATEGORIES.find((x) => x.value === v)?.label ?? v
+
+// ── 대나무숲 (캐입 익명 게시판)
+export const REVEAL_OPTIONS = [
+  { value: 'none', label: '완전 익명' },
+  { value: 'dept', label: '소속 부서 표시' },
+  { value: 'team', label: '소속 팀 표시' },
+] as const
+
+// ── 편입 신청서 선택 항목
+export const APPLY_WANTS = ['게이트 임무', '사건 조사', '팀 일상', '라이벌 · 경쟁', '성장', '관계']
+export const APPLY_FREQ = ['거의 매일', '주 3~4일', '주 1~2일', '불규칙']
+export const APPLY_LABELS: [string, string][] = [
+  ['name', '캐릭터 이름'],
+  ['kind', '구분'],
+  ['grade', '희망 등급'],
+  ['age', '나이'],
+  ['one_line', '한 줄 소개'],
+  ['keywords', '성격 키워드'],
+  ['ability', '능력 · 감각'],
+  ['background', '이력'],
+  ['role', '희망 팀 역할'],
+  ['wants', '해 보고 싶은 것'],
+  ['freq', '활동 빈도'],
+  ['message', '운영진에게 한마디'],
+]

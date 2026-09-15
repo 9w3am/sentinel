@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { ErrorBox, Tabs, WRAP, cx } from '../components/ui'
 import { api, useAuth, usePageMeta } from '../lib/backend'
 
@@ -10,11 +10,11 @@ export default function AuthPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>(params.get('mode') === 'join' ? 'join' : 'login')
-  usePageMeta(mode === 'login' ? '로그인' : '편입 신청', '등록 요원 로그인 · 편입 신청.')
+  usePageMeta(mode === 'login' ? '로그인' : '가입', '등록 요원 로그인 · 인가 번호로 가입.')
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(params.get('code') ?? '')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<unknown>(null)
@@ -42,13 +42,13 @@ export default function AuthPage() {
   return (
     <section className={cx(WRAP, 'grid gap-12 py-12 sm:py-16 lg:grid-cols-[1fr_460px] lg:items-start')}>
       <div className="lg:pt-4">
-        <h1 className="text-[44px] font-black leading-[1.05] tracking-[-0.04em] sm:text-[64px]">{mode === 'login' ? '로그인' : '편입 신청'}</h1>
+        <h1 className="text-[44px] font-black leading-[1.05] tracking-[-0.04em] sm:text-[64px]">{mode === 'login' ? '로그인' : '가입'}</h1>
         <p className="mt-4 max-w-lg text-[16px] leading-[1.8] text-muted-foreground">
-          {mode === 'login' ? '집무실, 협회 게시판, 결속 신고는 등록 요원만 쓸 수 있습니다.' : '관리부에서 받은 편입 인가 번호가 있어야 계정을 만들 수 있습니다.'}
+          {mode === 'login' ? '집무실, 협회 게시판, 조사, 대나무숲은 등록 요원만 쓸 수 있습니다.' : '편입 신청서가 합격하면 결과 조회에서 편입 인가 번호를 받습니다. 그 번호로 계정을 만듭니다.'}
         </p>
         <ol className="mt-10 max-w-lg border-t-2 border-foreground">
           {[
-            ['편입 인가 번호', '관리부가 한 사람에게 하나씩 발급합니다. 한 번 쓰면 사라집니다.'],
+            ['편입 인가 번호', '합격자에게 하나씩 발급됩니다. 한 번 쓰면 사라집니다.'],
             ['이메일', '로그인에만 쓰이고 명부에는 나오지 않습니다.'],
             ['계정 공유 금지', '다른 사람과 계정을 나눠 쓰면 자격이 정지될 수 있습니다.'],
           ].map(([t, d], i) => (
@@ -61,6 +61,13 @@ export default function AuthPage() {
             </li>
           ))}
         </ol>
+        <p className="mt-6 text-[14px] text-muted-foreground">
+          아직 신청 전이라면{' '}
+          <Link to="/apply" className="text-seal underline underline-offset-4">
+            편입 신청서
+          </Link>
+          부터 내 주세요.
+        </p>
       </div>
 
       <div className="corners bg-card">
@@ -73,7 +80,7 @@ export default function AuthPage() {
             }}
             items={[
               { value: 'login' as Mode, label: '로그인' },
-              { value: 'join' as Mode, label: '편입 신청' },
+              { value: 'join' as Mode, label: '인가 번호로 가입' },
             ]}
           />
         </div>
@@ -117,7 +124,7 @@ export default function AuthPage() {
           )}
           {err ? <ErrorBox error={err} /> : null}
           <button type="submit" className="btn btn-primary h-12 w-full text-[15px]" disabled={busy}>
-            {busy ? '확인 중…' : mode === 'login' ? '로그인' : '편입 신청'}
+            {busy ? '확인 중…' : mode === 'login' ? '로그인' : '가입'}
           </button>
           {api.mode === 'local' && mode === 'join' && <p className="border border-dashed border-rule px-3 py-2 font-mono text-[12px] text-muted-foreground">시연 모드 · 운영자 번호 DEMO-ADMIN</p>}
         </form>

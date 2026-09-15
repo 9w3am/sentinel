@@ -1,37 +1,42 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { TeamMark } from '../components/TeamMark'
 import { Empty, ErrorBox, GradeBadge, KindBadge, KindMark, Loading, PageTitle, WRAP, cx } from '../components/ui'
 import { BRANCHES, GRADES, GRADE_VALUES, KINDS } from '../config/world'
 import { api, useAsync, usePageMeta } from '../lib/backend'
-import { fmtDate, registryNo } from '../lib/util'
+import { registryNo } from '../lib/util'
 
 const PAGE = 20
 
 export default function Registry() {
   usePageMeta('요원 명부', '명부 공개에 동의한 등록 요원.')
   const { data, loading, error } = useAsync(() => api.listPublicCharacters(), [])
+  const teams = useAsync(() => api.listTeams(), [])
   const [q, setQ] = useState('')
   const [kind, setKind] = useState('')
   const [grade, setGrade] = useState('')
   const [aff, setAff] = useState('')
+  const [team, setTeam] = useState('')
   const [sort, setSort] = useState<'grade' | 'name' | 'new'>('grade')
   const [page, setPage] = useState(1)
 
+  const teamList = teams.data ?? []
   const list = useMemo(() => {
     const rows = (data ?? []).filter(
       (c) =>
         (!kind || c.kind === kind) &&
         (!grade || c.grade === grade) &&
         (!aff || c.affiliation === aff) &&
+        (!team || (team === 'none' ? !c.team_id : c.team_id === team)) &&
         (!q || [c.name, c.codename, c.affiliation].some((v) => v?.toLowerCase().includes(q.toLowerCase()))),
     )
     if (sort === 'grade') rows.sort((a, b) => GRADE_VALUES.indexOf(a.grade) - GRADE_VALUES.indexOf(b.grade) || a.name.localeCompare(b.name, 'ko'))
     if (sort === 'name') rows.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
     if (sort === 'new') rows.sort((a, b) => b.created_at.localeCompare(a.created_at))
     return rows
-  }, [data, q, kind, grade, aff, sort])
+  }, [data, q, kind, grade, aff, team, sort])
 
-  const filtered = !!(q || kind || grade || aff)
+  const filtered = !!(q || kind || grade || aff || team)
   const pages = Math.max(1, Math.ceil(list.length / PAGE))
   const cur = Math.min(page, pages)
   const rows = list.slice((cur - 1) * PAGE, cur * PAGE)
@@ -60,6 +65,15 @@ export default function Registry() {
                 </option>
               ))}
             </select>
+            <select className="field w-auto" value={team} onChange={(e) => reset(() => setTeam(e.target.value))} aria-label="팀">
+              <option value="">팀 전체</option>
+              {teamList.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+              <option value="none">미배치</option>
+            </select>
             <select className="field w-auto" value={aff} onChange={(e) => reset(() => setAff(e.target.value))} aria-label="소속">
               <option value="">소속 전체</option>
               {BRANCHES.map((b) => (
@@ -74,7 +88,7 @@ export default function Registry() {
           </div>
         </div>
 
-        <div className="mt-4 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="mb-3 mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex flex-wrap gap-0.5" role="tablist">
             <button type="button" role="tab" aria-selected={!kind} className="tab" onClick={() => reset(() => setKind(''))}>
               전체
@@ -98,37 +112,52 @@ export default function Registry() {
         ) : (
           data && (
             <div className="overflow-x-auto">
-              <table className="table-doc min-w-[760px]">
+              <table className="table-doc min-w-[900px]">
                 <thead>
                   <tr>
                     <th className="w-40">등록번호</th>
                     <th>이름</th>
                     <th className="w-28">구분</th>
-                    <th className="w-20">등급</th>
+                    <th className="w-16">등급</th>
                     <th className="w-44">소속</th>
-                    <th className="w-28 text-right">등록일</th>
+                    <th className="w-36">팀</th>
+                    <th className="w-16 text-right">기수</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((c) => (
-                    <tr key={c.id} className="group">
-                      <td className="font-mono text-[12px] text-muted-foreground">{registryNo(c.id, c.kind, c.grade)}</td>
-                      <td>
-                        <Link to={`/registry/${c.id}`} className="font-bold group-hover:text-seal">
-                          {c.name}
-                        </Link>
-                        {c.codename && <span className="ml-2 text-[13px] text-muted-foreground">{c.codename}</span>}
-                      </td>
-                      <td>
-                        <KindBadge kind={c.kind} />
-                      </td>
-                      <td>
-                        <GradeBadge grade={c.grade} size="sm" />
-                      </td>
-                      <td className="text-[14px] text-muted-foreground">{c.affiliation || '—'}</td>
-                      <td className="text-right font-mono text-[13px] text-muted-foreground">{fmtDate(c.created_at).replace(/\. /g, '.').replace(/\.$/, '')}</td>
-                    </tr>
-                  ))}
+                  {rows.map((c) => {
+                    const t = teamList.find((x) => x.id === c.team_id)
+                    return (
+                      <tr key={c.id} className="group">
+                        <td className="font-mono text-[12px] text-muted-foreground">{registryNo(c.id, c.kind, c.grade)}</td>
+                        <td>
+                          <Link to={`/registry/${c.id}`} className="font-bold group-hover:text-seal">
+                            {c.name}
+                          </Link>
+                          {c.codename && <span className="ml-2 text-[13px] text-muted-foreground">{c.codename}</span>}
+                        </td>
+                        <td>
+                          <KindBadge kind={c.kind} />
+                        </td>
+                        <td>
+                          <GradeBadge grade={c.grade} size="sm" />
+                        </td>
+                        <td className="text-[14px] text-muted-foreground">{c.affiliation || '—'}</td>
+                        <td className="text-[14px]">
+                          {t ? (
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                              <TeamMark team={t} size={18} />
+                              {t.name}
+                              {c.team_role && <span className="text-[12.5px] text-muted-foreground">{c.team_role}</span>}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">미배치</span>
+                          )}
+                        </td>
+                        <td className="text-right font-mono text-[13px] text-muted-foreground">{c.cohort_no ? `${c.cohort_no}기` : '—'}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

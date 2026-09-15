@@ -109,5 +109,12 @@ export function errMsg(e: unknown) {
   if (/FORBIDDEN|row-level security|permission denied/i.test(raw)) return '권한이 없습니다.'
   if (/incident_entries/i.test(raw) && /duplicate|unique/i.test(raw)) return '이미 참여 신청한 등록증입니다.'
   if (/duplicate key.*relations|relations_from_character_id/i.test(raw)) return '이미 신청되었거나 성립된 결속입니다.'
+  if (/NOT_RECRUITING/.test(raw)) return '지금은 편입 신청을 받는 기간이 아닙니다.'
+  if (/INVALID_FORM/.test(raw)) return '입력한 내용을 다시 확인해 주세요. 너무 길거나 빈 칸이 있습니다.'
+  if (/APPROACH_KIND/.test(raw)) return '이 조사 방법은 해당 구분의 요원만 쓸 수 있습니다. 감각 탐지는 센티넬, 정신 감응은 가이드만 가능합니다.'
+  if (/ALREADY_INVESTIGATED/.test(raw)) return '이 등록증으로 같은 대상을 같은 방법으로 이미 조사했습니다. 방법을 바꿔 보세요.'
+  if (/CASE_CLOSED/.test(raw)) return '종결된 사건입니다.'
+  if (/NOT_FOUND/.test(raw)) return '찾을 수 없습니다. 삭제되었거나 주소가 바뀌었습니다.'
+  if (/case_answers/i.test(raw) && /row-level|policy/i.test(raw)) return '승인된 내 등록증으로만, 사건이 열려 있을 때만 답을 낼 수 있습니다.'
   return raw
 }

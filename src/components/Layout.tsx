@@ -10,9 +10,16 @@ const NAV = [
   { to: '/rules', label: '협회 규정', end: false },
   { to: '/incidents', label: '게이트 현황', end: false },
   { to: '/system', label: '등급 안내', end: false },
-  { to: '/registry', label: '요원 명부', end: true },
-  { to: '/registry/map', label: '결속 관계도', end: false },
+  { to: '/registry', label: '요원 명부', end: false },
+  { to: '/teams', label: '현장 팀', end: false },
   { to: '/notices', label: '알림마당', end: false },
+]
+
+// 세계관 밖 커뮤 안내
+const GUIDE_LINKS = [
+  { to: '/guide', label: '커뮤 안내' },
+  { to: '/apply', label: '편입 신청서' },
+  { to: '/apply/check', label: '결과 조회' },
 ]
 
 export interface SiteCtx {
@@ -83,21 +90,29 @@ function Rail({ level, onMenu }: { level: number; onMenu: () => void }) {
   )
 }
 
-// 집무실 알림 숫자: 받은 결속 신청 · 반려된 내 등록증 · (관리부) 심사 대기
+// 집무실 알림 숫자: 받은 결속 신청 · 반려된 내 등록증 · (관리부) 심사 대기 · 편입 신청 · 문의
 function useOfficeBadges() {
   const { session } = useAuth()
   const { pathname } = useLocation()
   const data = useAsync(async () => {
-    if (!session?.role) return { bonds: 0, rejected: 0, review: 0 }
-    const [mine, rels, all] = await Promise.all([api.listMyCharacters(), api.listMyRelations(), session.role === 'admin' ? api.listAllCharacters() : Promise.resolve([])])
+    const zero = { bonds: 0, rejected: 0, admin: 0 }
+    if (!session?.role) return zero
+    const admin = session.role === 'admin'
+    const [mine, rels, all, apps, inbox] = await Promise.all([
+      api.listMyCharacters(),
+      api.listMyRelations(),
+      admin ? api.listAllCharacters() : Promise.resolve([]),
+      admin ? api.listApplications().catch(() => []) : Promise.resolve([]),
+      admin ? api.listInboxAdmin().catch(() => []) : Promise.resolve([]),
+    ])
     const ids = new Set(mine.map((c) => c.id))
     return {
       bonds: rels.filter((r) => r.status === 'requested' && ids.has(r.to_character_id) && r.created_by !== session.userId).length,
       rejected: mine.filter((c) => c.status === 'rejected').length,
-      review: all.filter((c) => c.status === 'pending').length,
+      admin: all.filter((c) => c.status === 'pending').length + apps.filter((a) => a.status === 'submitted').length + inbox.filter((i) => !i.reply).length,
     }
   }, [session?.userId, session?.role, pathname])
-  return data.data ?? { bonds: 0, rejected: 0, review: 0 }
+  return data.data ?? { bonds: 0, rejected: 0, admin: 0 }
 }
 
 function Badge({ n, tone = 'seal' }: { n: number; tone?: 'seal' | 'danger' }) {
@@ -108,7 +123,7 @@ function Badge({ n, tone = 'seal' }: { n: number; tone?: 'seal' | 'danger' }) {
 function TopBar({ onMenu, level }: { onMenu: () => void; level: number }) {
   const { session } = useAuth()
   const badges = useOfficeBadges()
-  const total = badges.bonds + badges.rejected + badges.review
+  const total = badges.bonds + badges.rejected + badges.admin
   return (
     <header className="sticky top-0 z-30 border-b border-rule bg-background/95 backdrop-blur-sm">
       <div className="flex h-16 items-center gap-6 px-5 sm:px-8 lg:px-10">
@@ -116,9 +131,9 @@ function TopBar({ onMenu, level }: { onMenu: () => void; level: number }) {
           <Emblem size={28} />
           <span className="text-[17px] font-black tracking-[-0.02em]">{WORLD.orgName}</span>
         </Link>
-        <nav className="hidden items-center gap-8 text-[15px] font-medium lg:flex" aria-label="주 메뉴">
+        <nav className="hidden items-center gap-7 text-[15px] font-medium lg:flex" aria-label="주 메뉴">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('transition-colors hover:text-seal', isActive && 'text-seal')}>
+            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('whitespace-nowrap transition-colors hover:text-seal', isActive && 'text-seal')}>
               {n.label}
             </NavLink>
           ))}
@@ -127,9 +142,12 @@ function TopBar({ onMenu, level }: { onMenu: () => void; level: number }) {
           <span className="font-mono text-[12px] lg:hidden" style={{ color: alertColor(level) }}>
             경보 {level}
           </span>
+          <NavLink to="/guide" className={({ isActive }) => cx('hidden whitespace-nowrap border px-2 py-1 hover:border-seal hover:text-seal sm:inline', isActive ? 'border-seal text-seal' : 'border-rule text-muted-foreground')}>
+            커뮤 안내
+          </NavLink>
           {session ? (
             <>
-              <span className="hidden text-muted-foreground sm:inline">{session.displayName}</span>
+              <span className="hidden text-muted-foreground xl:inline">{session.displayName}</span>
               <Link to="/office" className="btn btn-primary btn-sm relative" aria-label={total ? `집무실, 확인할 알림 ${total}건` : '집무실'}>
                 집무실
                 {total > 0 && (
@@ -145,7 +163,7 @@ function TopBar({ onMenu, level }: { onMenu: () => void; level: number }) {
                 로그인
               </Link>
               <span className="text-[#44423c]">|</span>
-              <Link to="/auth?mode=join" className="text-muted-foreground hover:text-foreground">
+              <Link to="/apply" className="whitespace-nowrap text-muted-foreground hover:text-foreground">
                 편입 신청
               </Link>
             </span>
@@ -173,12 +191,15 @@ function Drawer({ level, onClose }: { level: number; onClose: () => void }) {
         </button>
       </div>
       <div className={cx(WRAP, 'grid flex-1 content-start gap-10 overflow-y-auto py-10 lg:grid-cols-[1fr_360px]')}>
-        <nav>
+        <nav aria-label="전체 메뉴">
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('block border-b border-rule py-4 text-[28px] font-black tracking-[-0.03em] hover:text-seal sm:text-[40px]', isActive && 'text-seal')}>
               {n.label}
             </NavLink>
           ))}
+          <NavLink to="/registry/map" className={({ isActive }) => cx('block border-b border-rule py-4 text-[20px] font-bold tracking-[-0.02em] text-muted-foreground hover:text-seal sm:text-[26px]', isActive && 'text-seal')}>
+            결속 관계도
+          </NavLink>
         </nav>
         <div className="space-y-3">
           <div className="border p-4" style={{ borderColor: alertColor(level) }}>
@@ -192,15 +213,19 @@ function Drawer({ level, onClose }: { level: number; onClose: () => void }) {
               집무실 ({session.displayName})
             </Link>
           ) : (
-            <>
-              <Link to="/auth" className="btn btn-primary w-full">
-                로그인
-              </Link>
-              <Link to="/auth?mode=join" className="btn w-full">
-                편입 신청
-              </Link>
-            </>
+            <Link to="/auth" className="btn btn-primary w-full">
+              로그인
+            </Link>
           )}
+          <div className="border-t-2 border-foreground pt-2">
+            <p className="py-1 text-[12.5px] text-muted-foreground">세계관 밖 · 러너 안내</p>
+            {GUIDE_LINKS.map((g) => (
+              <Link key={g.to} to={g.to} className="flex items-center justify-between border-b border-rule py-3 text-[16px] font-bold hover:text-seal">
+                {g.label}
+                <Icon.arrow />
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -210,9 +235,16 @@ function Drawer({ level, onClose }: { level: number; onClose: () => void }) {
 function Footer() {
   return (
     <footer className="mt-20 border-t border-rule">
-      <div className={cx(WRAP, 'flex flex-wrap items-center justify-between gap-3 py-6 text-[12px] text-muted-foreground')}>
+      <div className={cx(WRAP, 'flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-6 text-[12px] text-muted-foreground')}>
         <span>{WORLD.orgName} · 본 누리집의 기록은 협회 규정에 따라 보존됩니다.</span>
-        <span className="font-mono">{api.mode === 'local' ? '시연 모드 · 이 브라우저에만 저장됨' : `© ${WORLD.orgNameEn}`}</span>
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {GUIDE_LINKS.map((g) => (
+            <Link key={g.to} to={g.to} className="hover:text-foreground">
+              {g.label}
+            </Link>
+          ))}
+          <span className="font-mono">{api.mode === 'local' ? '시연 모드 · 이 브라우저에만 저장됨' : `© ${WORLD.orgNameEn}`}</span>
+        </span>
       </div>
     </footer>
   )
@@ -223,8 +255,11 @@ const OFFICE_NAV = [
   { to: '/office', label: '개요', end: true },
   { to: '/office/cards', label: '내 등록증', end: false },
   { to: '/office/board', label: '협회 게시판', end: false },
+  { to: '/office/bamboo', label: '대나무숲', end: false },
+  { to: '/office/cases', label: '조사', end: false },
   { to: '/office/bonds', label: '결속 관계', end: false },
   { to: '/office/matching', label: '매칭률 조회', end: false },
+  { to: '/office/inbox', label: '문의함', end: false },
 ]
 
 export function OfficeLayout() {
@@ -277,7 +312,7 @@ export function OfficeLayout() {
         </div>
         <nav className={cx(WRAP, 'flex gap-0.5 overflow-x-auto pb-3')} aria-label="집무실 메뉴">
           {items.map((n) => {
-            const count = n.to === '/office/bonds' ? badges.bonds : n.to === '/office/cards' ? badges.rejected : n.to === '/office/admin' ? badges.review : 0
+            const count = n.to === '/office/bonds' ? badges.bonds : n.to === '/office/cards' ? badges.rejected : n.to === '/office/admin' ? badges.admin : 0
             return (
               <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('tab shrink-0', n.to === '/office/admin' && !isActive && 'text-seal')}>
                 {({ isActive }) => (
